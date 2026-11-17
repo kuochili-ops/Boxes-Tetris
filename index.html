@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>𓃥 白六紙箱俄羅斯方塊</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,6 +20,8 @@
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     html, body {
       margin: 0;
@@ -27,9 +29,15 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
       background-color: #141210;
       font-family: 'Inter', 'Noto Sans TC', sans-serif;
       color: #f5f2eb;
+    }
+    button {
+      touch-action: manipulation;
+      cursor: pointer;
     }
     #canvas-container {
       position: fixed;
@@ -37,6 +45,7 @@
       width: 100%;
       height: 100%;
       z-index: 1;
+      touch-action: none;
     }
     canvas {
       display: block;
@@ -60,6 +69,7 @@
       border: 1px solid rgba(214, 180, 138, 0.35);
       box-shadow: 0 4px 0 rgba(15, 12, 10, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
       transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.15s ease;
+      touch-action: none;
     }
     .arcade-btn:active, .arcade-btn.pressed {
       transform: translateY(3px);
@@ -86,6 +96,7 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.16);
       color: rgba(254, 243, 199, 0.92);
       transition: transform 0.06s ease, background 0.12s ease, border-color 0.12s ease;
+      touch-action: none;
     }
     .hud-translucent-btn:active, .hud-translucent-btn.pressed {
       transform: scale(0.93);
@@ -133,19 +144,19 @@
     <div class="flex flex-col items-end gap-2 pointer-events-auto">
       <!-- Action Pills -->
       <div class="flex items-center gap-1.5 sm:gap-2">
-        <button id="btn-bgm" title="背景音樂開關" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+        <button id="btn-bgm" type="button" title="背景音樂開關" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
           <span id="icon-bgm">🎵</span>
           <span class="hidden sm:inline" id="label-bgm">音樂</span>
         </button>
-        <button id="btn-mute" title="音效開關" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+        <button id="btn-mute" type="button" title="音效開關" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
           <span id="icon-sound">🔊</span>
           <span class="hidden sm:inline" id="label-sound">音效</span>
         </button>
-        <button id="btn-pause" title="暫停 (P)" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+        <button id="btn-pause" type="button" title="暫停 (P)" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
           <span id="icon-pause">⏸️</span>
           <span class="hidden sm:inline" id="label-pause">暫停</span>
         </button>
-        <button id="btn-toggle-panel" title="展開/收合工具箱" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1">
+        <button id="btn-toggle-panel" type="button" title="展開/收合工具箱" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1">
           <span>⚙️</span>
           <span class="hidden sm:inline">工具</span>
         </button>
@@ -157,37 +168,37 @@
           <span>📦 倉儲工作台控制</span>
         </div>
 
-        <button id="btn-bgm-drawer" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+        <button id="btn-bgm-drawer" type="button" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
           <span>🎵 BGM 經典配樂</span>
           <span id="bgm-mode-badge" class="px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]">開啟</span>
         </button>
 
-        <button id="btn-sfx-drawer" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+        <button id="btn-sfx-drawer" type="button" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
           <span>🔊 紙箱碰撞音效</span>
           <span id="sfx-mode-badge" class="px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]">開啟</span>
         </button>
 
-        <button id="btn-control-mode" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-amber-500/40 text-xs font-semibold flex items-center justify-between transition">
+        <button id="btn-control-mode" type="button" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-amber-500/40 text-xs font-semibold flex items-center justify-between transition">
           <span>🎮 操控面板模式</span>
           <span id="control-mode-badge" class="px-1.5 py-0.5 rounded bg-amber-600/35 text-amber-200 text-[10px]">半透明方向鍵</span>
         </button>
 
-        <button id="btn-camera-toggle" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+        <button id="btn-camera-toggle" type="button" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
           <span>🎥 自由視角旋轉</span>
           <span id="camera-mode-badge" class="px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]">開啟</span>
         </button>
 
-        <button id="btn-reset-cam" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+        <button id="btn-reset-cam" type="button" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
           <span>🎯 重置標準視角</span>
           <span class="text-stone-400 text-[10px]">R</span>
         </button>
 
-        <button id="btn-export-glb" class="w-full py-2 px-3 rounded-xl bg-amber-700/80 hover:bg-amber-600/90 border border-amber-400/40 text-xs font-bold text-amber-50 flex items-center justify-between transition shadow-md">
+        <button id="btn-export-glb" type="button" class="w-full py-2 px-3 rounded-xl bg-amber-700/80 hover:bg-amber-600/90 border border-amber-400/40 text-xs font-bold text-amber-50 flex items-center justify-between transition shadow-md">
           <span>📥 匯出 GLB 模型</span>
           <span class="text-amber-200 text-[10px]">.glb</span>
         </button>
 
-        <button id="btn-restart-top" class="w-full py-2 px-3 rounded-xl bg-rose-900/60 hover:bg-rose-800/80 border border-rose-500/40 text-xs font-semibold text-rose-100 flex items-center justify-between transition">
+        <button id="btn-restart-top" type="button" class="w-full py-2 px-3 rounded-xl bg-rose-900/60 hover:bg-rose-800/80 border border-rose-500/40 text-xs font-semibold text-rose-100 flex items-center justify-between transition">
           <span>🔄 重新開局</span>
           <span class="text-rose-300 text-[10px]">NEW</span>
         </button>
@@ -205,15 +216,15 @@
   <div id="arcade-controls" class="hidden fixed bottom-3 sm:bottom-5 left-0 right-0 z-40 px-2 sm:px-6 flex items-end justify-between gap-1 max-w-3xl mx-auto pointer-events-none">
     <!-- Left Cluster -->
     <div class="flex items-center gap-1 sm:gap-2.5 pointer-events-auto">
-      <button id="ctrl-left" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
+      <button id="ctrl-left" type="button" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
         <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         <span class="text-[9px] sm:text-[10px] text-stone-400 font-semibold">左移</span>
       </button>
-      <button id="ctrl-down" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
+      <button id="ctrl-down" type="button" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
         <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
         <span class="text-[9px] sm:text-[10px] text-stone-400 font-semibold">緩降</span>
       </button>
-      <button id="ctrl-right" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
+      <button id="ctrl-right" type="button" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
         <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         <span class="text-[9px] sm:text-[10px] text-stone-400 font-semibold">右移</span>
       </button>
@@ -221,15 +232,15 @@
 
     <!-- Right Cluster -->
     <div class="flex items-center gap-1 sm:gap-2.5 pointer-events-auto">
-      <button id="ctrl-hold" class="arcade-btn w-[44px] h-14 sm:w-14 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-amber-200">
+      <button id="ctrl-hold" type="button" class="arcade-btn w-[44px] h-14 sm:w-14 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-amber-200">
         <span class="text-sm sm:text-lg font-black leading-none">📦</span>
         <span class="text-[9px] sm:text-[10px] text-stone-300 font-semibold mt-1">暫存</span>
       </button>
-      <button id="ctrl-rotate" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-sky-200">
+      <button id="ctrl-rotate" type="button" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-sky-200">
         <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-3-6.7L21 8m0-5v5h-5"/></svg>
         <span class="text-[9px] sm:text-[10px] text-stone-300 font-semibold">旋轉</span>
       </button>
-      <button id="ctrl-drop" class="arcade-btn-accent w-[50px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-white">
+      <button id="ctrl-drop" type="button" class="arcade-btn arcade-btn-accent w-[50px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-white">
         <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 13l-7 7-7-7m14-8l-7 7-7-7"/></svg>
         <span class="text-[9px] sm:text-[10px] text-amber-100 font-bold">直落</span>
       </button>
@@ -243,26 +254,26 @@
       <div class="grid grid-cols-3 grid-rows-3 gap-1.5 w-36 h-36 sm:w-44 sm:h-44">
         <!-- Row 1: Up (Hard Drop) -->
         <div></div>
-        <button id="dpad-up" title="直接掉落 (Hard Drop)" class="hud-translucent-btn rounded-2xl flex flex-col items-center justify-center">
+        <button id="dpad-up" type="button" title="直接掉落 (Hard Drop)" class="hud-translucent-btn rounded-2xl flex flex-col items-center justify-center">
           <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
           <span class="text-[9px] sm:text-[10px] font-bold tracking-tight text-amber-200/90 -mt-0.5">直落</span>
         </button>
         <div></div>
 
         <!-- Row 2: Left & Right -->
-        <button id="dpad-left" title="左移" class="hud-translucent-btn rounded-2xl flex items-center justify-center">
+        <button id="dpad-left" type="button" title="左移" class="hud-translucent-btn rounded-2xl flex items-center justify-center">
           <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div class="rounded-2xl bg-stone-900/20 border border-amber-200/15 flex items-center justify-center">
           <div class="w-2.5 h-2.5 rounded-full bg-amber-200/35"></div>
         </div>
-        <button id="dpad-right" title="右移" class="hud-translucent-btn rounded-2xl flex items-center justify-center">
+        <button id="dpad-right" type="button" title="右移" class="hud-translucent-btn rounded-2xl flex items-center justify-center">
           <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
         </button>
 
         <!-- Row 3: Down (Soft Drop) -->
         <div></div>
-        <button id="dpad-down" title="緩降" class="hud-translucent-btn rounded-2xl flex flex-col items-center justify-center">
+        <button id="dpad-down" type="button" title="緩降" class="hud-translucent-btn rounded-2xl flex flex-col items-center justify-center">
           <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
           <span class="text-[9px] sm:text-[10px] font-semibold text-stone-200/80 -mt-0.5">緩降</span>
         </button>
@@ -272,11 +283,11 @@
 
     <!-- Bottom-Right: Semi-Transparent Clockwise Rotate Button (+ discreet Hold pill above) -->
     <div class="fixed bottom-5 right-4 sm:bottom-7 sm:right-7 flex flex-col items-center gap-3 pointer-events-auto">
-      <button id="dpad-hold" title="暫存紙箱 (Hold)" class="hud-translucent-btn px-3.5 py-1.5 rounded-full flex items-center gap-1 text-xs font-bold">
+      <button id="dpad-hold" type="button" title="暫存紙箱 (Hold)" class="hud-translucent-btn px-3.5 py-1.5 rounded-full flex items-center gap-1 text-xs font-bold">
         <span>📦</span>
         <span>暫存</span>
       </button>
-      <button id="dpad-rotate" title="順時鐘旋轉" class="hud-translucent-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center">
+      <button id="dpad-rotate" type="button" title="順時鐘旋轉" class="hud-translucent-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center">
         <svg class="w-9 h-9 sm:w-11 sm:h-11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-3-6.7L21 8m0-5v5h-5" />
         </svg>
@@ -315,10 +326,10 @@
       </div>
 
       <div class="w-full flex flex-col gap-2.5 mt-1">
-        <button id="btn-modal-primary" class="arcade-btn-accent w-full py-3.5 rounded-2xl font-black text-base sm:text-lg text-white tracking-wider cursor-pointer">
+        <button id="btn-modal-primary" type="button" class="arcade-btn-accent w-full py-3.5 rounded-2xl font-black text-base sm:text-lg text-white tracking-wider cursor-pointer">
           開始堆疊紙箱
         </button>
-        <button id="btn-modal-export" class="hidden w-full py-2.5 rounded-2xl bg-stone-800/90 hover:bg-stone-700/90 border border-amber-400/35 text-xs sm:text-sm font-bold text-amber-200 cursor-pointer transition">
+        <button id="btn-modal-export" type="button" class="hidden w-full py-2.5 rounded-2xl bg-stone-800/90 hover:bg-stone-700/90 border border-amber-400/35 text-xs sm:text-sm font-bold text-amber-200 cursor-pointer transition">
           📥 匯出當前 3D 紙箱堆疊 (.glb)
         </button>
       </div>
@@ -329,16 +340,27 @@
     (function () {
       'use strict';
 
-      // Verify Three.js CDN loaded properly
-      if (typeof window.THREE === 'undefined') {
-        const subtitle = document.getElementById('modal-subtitle');
-        if (subtitle) {
-          subtitle.innerHTML = '<span class="text-rose-400 font-bold">⚠️ 3D 引擎 (Three.js) 載入失敗，請確認網路連線後重新整理頁面。</span>';
+      // --- 0. SAFE ANTI-PINCH-ZOOM PROTECTION (NEVER blocks single-tap clicks) ---
+      document.addEventListener('touchstart', function (e) {
+        if (e.touches && e.touches.length > 1) {
+          e.preventDefault();
         }
-        return;
+      }, { passive: false, capture: true });
+
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evtName) {
+        document.addEventListener(evtName, function (e) {
+          e.preventDefault();
+        }, { passive: false, capture: true });
+      });
+
+      // Helper for safe event binding
+      function safeBind(id, eventName, handler) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(eventName, handler);
+        return el;
       }
 
-      // Cross-browser rounded rectangle helper for Canvas 2D (fixes Safari/WebView compatibility)
+      // Cross-browser rounded rectangle helper for Canvas 2D
       function drawRoundedRectPath(ctx, x, y, w, h, r) {
         const radius = Math.min(r, w / 2, h / 2);
         ctx.beginPath();
@@ -359,10 +381,9 @@
       const ROWS = 20;
       const BLOCK_SIZE = 1.0;
 
-      // Authentic cardboard painted colors matching the reference studio warehouse photo
       const TETROMINOES = {
         I: {
-          color: '#189ad3', // Vibrant Cyan-Blue painted cardboard
+          color: '#189ad3',
           accent: '#0e7490',
           shapes: [
             [[0,1],[1,1],[2,1],[3,1]],
@@ -372,7 +393,7 @@
           ]
         },
         O: {
-          color: '#eab308', // Bright Painted Yellow cardboard
+          color: '#eab308',
           accent: '#ca8a04',
           shapes: [
             [[1,0],[2,0],[1,1],[2,1]],
@@ -382,7 +403,7 @@
           ]
         },
         T: {
-          color: '#9333ea', // Hand-brushed Purple cardboard
+          color: '#9333ea',
           accent: '#7e22ce',
           shapes: [
             [[1,0],[0,1],[1,1],[2,1]],
@@ -392,7 +413,7 @@
           ]
         },
         S: {
-          color: '#16a34a', // Studio Painted Green cardboard
+          color: '#16a34a',
           accent: '#15803d',
           shapes: [
             [[1,0],[2,0],[0,1],[1,1]],
@@ -402,7 +423,7 @@
           ]
         },
         Z: {
-          color: '#dc2626', // Bold Painted Red cardboard
+          color: '#dc2626',
           accent: '#b91c1c',
           shapes: [
             [[0,0],[1,0],[1,1],[2,1]],
@@ -412,7 +433,7 @@
           ]
         },
         J: {
-          color: '#2563eb', // Cobalt Blue cardboard
+          color: '#2563eb',
           accent: '#1d4ed8',
           shapes: [
             [[0,0],[0,1],[1,1],[2,1]],
@@ -422,7 +443,7 @@
           ]
         },
         L: {
-          color: '#ea580c', // Kraft-Orange painted cardboard
+          color: '#ea580c',
           accent: '#c2410c',
           shapes: [
             [[2,0],[0,1],[1,1],[2,1]],
@@ -435,12 +456,11 @@
 
       const PIECE_KEYS = Object.keys(TETROMINOES);
 
-      // Basic SRS Wall Kick offsets
       const WALL_KICKS = [
         [0, 0], [-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [-2, 0], [2, 0]
       ];
 
-      // --- 2. PROCEDURAL SOUND SYNTHESIZER & KOROBEINIKI BGM (WEB AUDIO API) ---
+      // --- 2. PROCEDURAL SOUND SYNTHESIZER & KOROBEINIKI BGM ---
       const NOTE_FREQS = {
         REST: 0,
         E2: 82.41, A2: 110.00, B2: 123.47, C3: 130.81, D3: 146.83, E3: 164.81, Gs3: 207.65, A3: 220.00,
@@ -485,6 +505,30 @@
         ['A2', 2], ['C3', 2], ['E3', 2], ['A3', 2],
         ['E3', 2], ['B2', 2], ['E2', 2], ['REST', 2]
       ];
+
+      // --- 3. GAME STATE VARIABLES ---
+      let board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+      let bag = [];
+      let currentPiece = null;
+      let nextType = null;
+      let holdType = null;
+      let canHold = true;
+
+      let score = 0;
+      let lines = 0;
+      let level = 1;
+      let isPlaying = false;
+      let isPaused = false;
+      let isGameOver = false;
+      let isAnimatingRows = false;
+
+      let dropAccumulator = 0;
+      let lastTimestamp = 0;
+      let cameraShakeIntensity = 0;
+
+      const clearingAnimations = [];
+      const fallingRowAnimations = [];
+      const dustParticles = [];
 
       class CardboardAudio {
         constructor() {
@@ -844,7 +888,16 @@
 
       const soundFX = new CardboardAudio();
 
-      // --- 3. PROCEDURAL CARDBOARD CUBE TEXTURES & MATERIALS ---
+      // Verify Three.js CDN loaded properly
+      if (typeof window.THREE === 'undefined') {
+        const subtitle = document.getElementById('modal-subtitle');
+        if (subtitle) {
+          subtitle.innerHTML = '<span class="text-rose-400 font-bold">⚠️ 3D 引擎 (Three.js) 載入失敗，請確認網路連線後重新整理頁面。</span>';
+        }
+        return;
+      }
+
+      // --- 4. PROCEDURAL CARDBOARD CUBE TEXTURES & MATERIALS ---
       const materialCache = {};
       let sharedBoxGeometry = null;
       let sharedBumpTexture = null;
@@ -1056,7 +1109,7 @@
         return mesh;
       }
 
-      // --- 4. THREE.JS SCENE & WAREHOUSE STUDIO ENVIRONMENT ---
+      // --- 5. THREE.JS SCENE & WAREHOUSE STUDIO ENVIRONMENT ---
       const container = document.getElementById('canvas-container');
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x1b1815);
@@ -1117,32 +1170,8 @@
       rimLight.position.set(-16, 15, -14);
       scene.add(rimLight);
 
-      // --- 5. GAME STATE VARIABLES (Declared prior to Backboard HUD rendering) ---
-      let board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-      let bag = [];
-      let currentPiece = null;
-      let nextType = null;
-      let holdType = null;
-      let canHold = true;
-
-      let score = 0;
-      let lines = 0;
-      let level = 1;
-      let isPlaying = false;
-      let isPaused = false;
-      let isGameOver = false;
-      let isAnimatingRows = false;
-
-      let dropAccumulator = 0;
-      let lastTimestamp = 0;
-      let cameraShakeIntensity = 0;
-
-      const clearingAnimations = [];
-      const fallingRowAnimations = [];
-      const dustParticles = [];
-
       // --- 5B. 3D BACKBOARD INTEGRATED HUD BOARD (HOLD | SCORE/LV/LINES | NEXT) ---
-      const BACKBOARD_TOTAL_H = 23.6; // 20.0 playfield rows + 3.6 header sign area at top
+      const BACKBOARD_TOTAL_H = 23.6;
       let backboardCanvas = null;
       let backboardCtx = null;
       let backboardTexture = null;
@@ -1181,19 +1210,15 @@
           const px = offsetX + (x - minX) * cell;
           const py = offsetY + (y - minY) * cell;
 
-          // Kraft cardboard outer rim
           ctx.fillStyle = '#c49660';
           ctx.fillRect(px + 1, py + 1, cell - 2, cell - 2);
 
-          // Painted color fill
           ctx.fillStyle = color;
           ctx.fillRect(px + 4, py + 4, cell - 8, cell - 8);
 
-          // Packing tape strip across center
           ctx.fillStyle = 'rgba(242, 216, 172, 0.58)';
           ctx.fillRect(px + cell / 2 - 3.5, py + 1, 7, cell - 2);
 
-          // Crisp dark outline
           ctx.strokeStyle = 'rgba(20, 14, 10, 0.78)';
           ctx.lineWidth = 2;
           ctx.strokeRect(px + 1, py + 1, cell - 2, cell - 2);
@@ -1216,7 +1241,6 @@
         const headerRatio = 3.6 / BACKBOARD_TOTAL_H;
         const headerH = Math.round(H * headerRatio);
 
-        // 1. Base Backboard Wall Surface
         ctx.fillStyle = '#29241f';
         ctx.fillRect(0, 0, W, H);
 
@@ -1225,7 +1249,6 @@
           ctx.fillRect(0, y, W, 2);
         }
 
-        // 2. Top Integrated Status Header Panel (Above the 20-row playfield)
         const pad = 22;
         const panelX = pad;
         const panelY = 20;
@@ -1240,7 +1263,6 @@
         ctx.fill();
         ctx.stroke();
 
-        // Top title banner strip inside header
         const titleBarH = 66;
         ctx.fillStyle = 'rgba(180, 115, 42, 0.32)';
         drawRoundedRectPath(ctx, panelX + 12, panelY + 12, panelW - 24, titleBarH, 14);
@@ -1252,7 +1274,6 @@
         ctx.textBaseline = 'middle';
         ctx.fillText('𓃥 白六紙箱俄羅斯方塊', W / 2, panelY + 12 + titleBarH / 2 + 2);
 
-        // 3-Column Layout below title: [HOLD Box] | [SCORE / LV / LINES] | [NEXT Box]
         const bodyTop = panelY + 12 + titleBarH + 14;
         const bodyH = panelH - (titleBarH + 38);
         const sideColW = 248;
@@ -1330,7 +1351,6 @@
         ctx.fillText('下一個 NEXT', rightBoxX + sideColW / 2, bodyTop + 26);
         drawMiniCardboardPieceOnBoard(ctx, nextType, rightBoxX + 12, bodyTop + 42, sideColW - 24, bodyH - 50);
 
-        // Bottom Warning/Top-Line Tape Divider separating Header Sign from 10x20 Grid
         ctx.fillStyle = 'rgba(217, 119, 6, 0.68)';
         ctx.fillRect(0, headerH - 8, W, 8);
         ctx.restore();
@@ -1828,6 +1848,18 @@
         return Math.max(95, 850 * Math.pow(0.86, level - 1));
       }
 
+      function showModalOverlay(show) {
+        const overlay = document.getElementById('modal-overlay');
+        if (!overlay) return;
+        if (show) {
+          overlay.classList.remove('hidden');
+          overlay.style.display = 'flex';
+        } else {
+          overlay.classList.add('hidden');
+          overlay.style.display = 'none';
+        }
+      }
+
       function resetGame() {
         for (let y = 0; y < ROWS; y++) {
           for (let x = 0; x < COLS; x++) {
@@ -1846,6 +1878,7 @@
         lines = 0;
         level = 1;
         dropAccumulator = 0;
+        lastTimestamp = performance.now();
         isGameOver = false;
         isPaused = false;
         isPlaying = true;
@@ -1854,8 +1887,8 @@
         fallingRowAnimations.length = 0;
 
         updateBackboardHUDTexture();
-        const overlay = document.getElementById('modal-overlay');
-        if (overlay) overlay.classList.add('hidden');
+        showModalOverlay(false);
+
         const iconPause = document.getElementById('icon-pause');
         const labelPause = document.getElementById('label-pause');
         if (iconPause) iconPause.textContent = '⏸️';
@@ -1878,24 +1911,20 @@
           ghostPieceGroup.remove(ghostPieceGroup.children[0]);
         }
 
-        const overlay = document.getElementById('modal-overlay');
-        if (overlay) {
-          document.getElementById('modal-title').textContent = '倉庫堆滿啦！GAME OVER';
-          document.getElementById('modal-subtitle').textContent = '紙箱已堆疊至天花板！您可以重新挑戰，或將目前的 3D 紙箱堆疊作品匯出成 .glb 模型。';
-          document.getElementById('modal-stats').classList.remove('hidden');
-          document.getElementById('final-score').textContent = score.toLocaleString();
-          document.getElementById('final-level').textContent = level;
-          document.getElementById('final-lines').textContent = lines;
-          document.getElementById('btn-modal-primary').textContent = '🔄 再玩一局';
-          document.getElementById('btn-modal-export').classList.remove('hidden');
-          overlay.classList.remove('hidden');
-        }
+        document.getElementById('modal-title').textContent = '倉庫堆滿啦！GAME OVER';
+        document.getElementById('modal-subtitle').textContent = '紙箱已堆疊至天花板！您可以重新挑戰，或將目前的 3D 紙箱堆疊作品匯出成 .glb 模型。';
+        document.getElementById('modal-stats').classList.remove('hidden');
+        document.getElementById('final-score').textContent = score.toLocaleString();
+        document.getElementById('final-level').textContent = level;
+        document.getElementById('final-lines').textContent = lines;
+        document.getElementById('btn-modal-primary').textContent = '🔄 再玩一局';
+        document.getElementById('btn-modal-export').classList.remove('hidden');
+        showModalOverlay(true);
       }
 
       function togglePause() {
         if (!isPlaying || isGameOver) return;
         isPaused = !isPaused;
-        const overlay = document.getElementById('modal-overlay');
         if (isPaused) {
           soundFX.stopBgm();
           document.getElementById('icon-pause').textContent = '▶️';
@@ -1905,12 +1934,12 @@
           document.getElementById('modal-stats').classList.add('hidden');
           document.getElementById('btn-modal-primary').textContent = '▶️ 繼續遊戲';
           document.getElementById('btn-modal-export').classList.remove('hidden');
-          if (overlay) overlay.classList.remove('hidden');
+          showModalOverlay(true);
         } else {
           soundFX.startBgm();
           document.getElementById('icon-pause').textContent = '⏸️';
           document.getElementById('label-pause').textContent = '暫停';
-          if (overlay) overlay.classList.add('hidden');
+          showModalOverlay(false);
           lastTimestamp = performance.now();
         }
       }
@@ -1996,12 +2025,6 @@
       ['pointerdown', 'touchstart', 'keydown'].forEach(evt => {
         window.addEventListener(evt, unlockAudioOnGesture, { capture: true, passive: true });
       });
-
-      function safeBind(id, eventName, handler) {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener(eventName, handler);
-        return el;
-      }
 
       document.addEventListener('keydown', (e) => {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) {
@@ -2199,14 +2222,27 @@
         );
       });
 
-      // Header & Modal UI Buttons
-      safeBind('btn-modal-primary', 'click', () => {
+      // Primary Start / Resume / Restart Modal Button (Reliable on both touch & click)
+      let modalActionLock = false;
+      function handlePrimaryModalAction(e) {
+        if (e) e.preventDefault();
+        if (modalActionLock) return;
+        modalActionLock = true;
+        setTimeout(() => { modalActionLock = false; }, 250);
+
         if (isPaused && !isGameOver) {
           togglePause();
         } else {
           resetGame();
         }
-      });
+      }
+
+      const btnModalPrimary = document.getElementById('btn-modal-primary');
+      if (btnModalPrimary) {
+        btnModalPrimary.addEventListener('pointerdown', handlePrimaryModalAction);
+        btnModalPrimary.addEventListener('click', handlePrimaryModalAction);
+      }
+
       safeBind('btn-modal-export', 'click', exportCardboardGLB);
       safeBind('btn-export-glb', 'click', exportCardboardGLB);
       safeBind('btn-restart-top', 'click', resetGame);
