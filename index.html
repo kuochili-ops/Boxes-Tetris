@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>𓃥 白六紙箱俄羅斯方塊</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- OrbitControls & GLTFExporter for Three.js r128 -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #141210;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      color: #f5f2eb;
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Glassmorphism UI */
+    .glass-panel {
+      background: rgba(28, 24, 20, 0.74);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(214, 180, 138, 0.24);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Arcade Button Tactile Feel */
+    .arcade-btn {
+      background: linear-gradient(180deg, rgba(64, 54, 44, 0.92) 0%, rgba(38, 32, 26, 0.96) 100%);
+      border: 1px solid rgba(214, 180, 138, 0.35);
+      box-shadow: 0 4px 0 rgba(15, 12, 10, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.15s ease;
+    }
+    .arcade-btn:active, .arcade-btn.pressed {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(15, 12, 10, 0.9), inset 0 1px 2px rgba(0, 0, 0, 0.4);
+      background: linear-gradient(180deg, rgba(84, 70, 56, 0.96) 0%, rgba(52, 43, 35, 0.98) 100%);
+    }
+
+    .arcade-btn-accent {
+      background: linear-gradient(180deg, #d97706 0%, #b45309 100%);
+      border: 1px solid rgba(253, 224, 71, 0.45);
+      box-shadow: 0 4px 0 #78350f, inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .arcade-btn-accent:active, .arcade-btn-accent.pressed {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #78350f;
+    }
+
+    /* Semi-transparent Floating D-Pad & Rotate Overlay Buttons */
+    .hud-translucent-btn {
+      background: rgba(28, 24, 20, 0.36);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(253, 230, 138, 0.34);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      color: rgba(254, 243, 199, 0.92);
+      transition: transform 0.06s ease, background 0.12s ease, border-color 0.12s ease;
+    }
+    .hud-translucent-btn:active, .hud-translucent-btn.pressed {
+      transform: scale(0.93);
+      background: rgba(217, 119, 6, 0.5);
+      border-color: rgba(253, 224, 71, 0.8);
+      color: #ffffff;
+    }
+
+    /* Score Popup Animation */
+    @keyframes floatScore {
+      0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); }
+      20% { opacity: 1; transform: translate(-50%, -10px) scale(1.1); }
+      80% { opacity: 1; transform: translate(-50%, -35px) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -55px) scale(0.95); }
+    }
+    .score-popup {
+      animation: floatScore 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* Toast Notification */
+    @keyframes slideDown {
+      0% { opacity: 0; transform: translate(-50%, -20px); }
+      15% { opacity: 1; transform: translate(-50%, 0); }
+      85% { opacity: 1; transform: translate(-50%, 0); }
+      100% { opacity: 0; transform: translate(-50%, -20px); }
+    }
+    .toast-anim {
+      animation: slideDown 2.6s ease forwards;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D WebGL Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- Floating Score Popup Layer -->
+  <div id="popup-layer" class="fixed inset-0 pointer-events-none z-20 overflow-hidden"></div>
+
+  <!-- Toast Message Box -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none"></div>
+
+  <!-- Top Header Bar -->
+  <header class="fixed top-0 left-0 right-0 z-30 p-2 sm:p-4 flex items-start justify-between pointer-events-none">
+    <!-- Title & Quick Stats -->
+    <div class="glass-panel rounded-2xl px-3.5 py-2.5 sm:px-5 sm:py-3 pointer-events-auto flex flex-col gap-1.5 max-w-[65%] sm:max-w-none">
+      <div class="flex items-center gap-2">
+        <span class="text-xl sm:text-2xl leading-none">𓃥</span>
+        <h1 class="text-sm sm:text-lg font-black tracking-wide text-amber-100 truncate">白六紙箱俄羅斯方塊</h1>
+      </div>
+      <div class="flex items-center gap-3 sm:gap-5 text-xs sm:text-sm">
+        <div>
+          <span class="text-stone-400 text-[10px] sm:text-xs block">分數 SCORE</span>
+          <span id="ui-score" class="font-extrabold text-amber-400 text-sm sm:text-lg tabular-nums">0</span>
+        </div>
+        <div class="h-6 w-px bg-stone-700/80"></div>
+        <div>
+          <span class="text-stone-400 text-[10px] sm:text-xs block">等級 LV</span>
+          <span id="ui-level" class="font-bold text-stone-100 text-sm sm:text-base tabular-nums">1</span>
+        </div>
+        <div class="h-6 w-px bg-stone-700/80"></div>
+        <div>
+          <span class="text-stone-400 text-[10px] sm:text-xs block">消除 LINES</span>
+          <span id="ui-lines" class="font-bold text-stone-100 text-sm sm:text-base tabular-nums">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collapsible Right Tools -->
+    <div class="flex flex-col items-end gap-2 pointer-events-auto">
+      <!-- Action Pills -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-bgm" title="背景音樂開關" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+          <span id="icon-bgm">🎵</span>
+          <span class="hidden sm:inline" id="label-bgm">音樂</span>
+        </button>
+        <button id="btn-mute" title="音效開關" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+          <span id="icon-sound">🔊</span>
+          <span class="hidden sm:inline" id="label-sound">音效</span>
+        </button>
+        <button id="btn-pause" title="暫停 (P)" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5">
+          <span id="icon-pause">⏸️</span>
+          <span class="hidden sm:inline" id="label-pause">暫停</span>
+        </button>
+        <button id="btn-toggle-panel" title="展開/收合工具箱" class="glass-panel hover:bg-stone-800/80 active:scale-95 transition rounded-xl p-2 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold flex items-center gap-1">
+          <span>⚙️</span>
+          <span class="hidden sm:inline">工具</span>
+        </button>
+      </div>
+
+      <!-- Collapsible Floating Control Drawer -->
+      <div id="tools-drawer" class="glass-panel rounded-2xl p-3 flex flex-col gap-2 w-52 sm:w-60 transition-all duration-200 origin-top-right">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-amber-300/90 flex items-center justify-between">
+          <span>📦 倉儲工作台控制</span>
+        </div>
+
+        <button id="btn-bgm-drawer" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+          <span>🎵 BGM 經典配樂</span>
+          <span id="bgm-mode-badge" class="px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]">開啟</span>
+        </button>
+
+        <button id="btn-sfx-drawer" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+          <span>🔊 紙箱碰撞音效</span>
+          <span id="sfx-mode-badge" class="px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]">開啟</span>
+        </button>
+
+        <button id="btn-control-mode" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-amber-500/40 text-xs font-semibold flex items-center justify-between transition">
+          <span>🎮 操控面板模式</span>
+          <span id="control-mode-badge" class="px-1.5 py-0.5 rounded bg-amber-600/35 text-amber-200 text-[10px]">半透明方向鍵</span>
+        </button>
+
+        <button id="btn-camera-toggle" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+          <span>🎥 自由視角旋轉</span>
+          <span id="camera-mode-badge" class="px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]">開啟</span>
+        </button>
+
+        <button id="btn-reset-cam" class="w-full py-2 px-3 rounded-xl bg-stone-800/90 hover:bg-stone-700/90 border border-stone-600/50 text-xs font-semibold flex items-center justify-between transition">
+          <span>🎯 重置標準視角</span>
+          <span class="text-stone-400 text-[10px]">R</span>
+        </button>
+
+        <button id="btn-export-glb" class="w-full py-2 px-3 rounded-xl bg-amber-700/80 hover:bg-amber-600/90 border border-amber-400/40 text-xs font-bold text-amber-50 flex items-center justify-between transition shadow-md">
+          <span>📥 匯出 GLB 模型</span>
+          <span class="text-amber-200 text-[10px]">.glb</span>
+        </button>
+
+        <button id="btn-restart-top" class="w-full py-2 px-3 rounded-xl bg-rose-900/60 hover:bg-rose-800/80 border border-rose-500/40 text-xs font-semibold text-rose-100 flex items-center justify-between transition">
+          <span>🔄 重新開局</span>
+          <span class="text-rose-300 text-[10px]">NEW</span>
+        </button>
+
+        <div class="border-t border-stone-700/70 pt-2 text-[10px] text-stone-400 leading-relaxed hidden sm:block">
+          <div><b class="text-stone-200">← →</b> 移動 ｜ <b class="text-stone-200">↑ / X</b> 旋轉</div>
+          <div><b class="text-stone-200">↓</b> 緩降 ｜ <b class="text-stone-200">Space</b> 直落</div>
+          <div><b class="text-stone-200">C / Shift</b> 暫存紙箱</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Left 2D Mini Canvas Previews for HOLD and NEXT -->
+  <div class="fixed left-2.5 sm:left-4 top-24 sm:top-28 z-20 flex flex-col gap-2.5 pointer-events-none">
+    <!-- HOLD Slot -->
+    <div class="glass-panel rounded-2xl p-2 sm:p-2.5 flex flex-col items-center w-20 sm:w-24 pointer-events-auto cursor-pointer" id="hold-box-ui" title="暫存方塊 (C)">
+      <span class="text-[10px] sm:text-xs font-bold tracking-wider text-stone-300 mb-1">暫存 HOLD</span>
+      <canvas id="canvas-hold" width="76" height="56" class="w-16 h-12 sm:w-20 sm:h-14 rounded-lg bg-stone-950/50"></canvas>
+    </div>
+
+    <!-- NEXT Slot -->
+    <div class="glass-panel rounded-2xl p-2 sm:p-2.5 flex flex-col items-center w-20 sm:w-24">
+      <span class="text-[10px] sm:text-xs font-bold tracking-wider text-amber-300 mb-1">下一個 NEXT</span>
+      <canvas id="canvas-next" width="76" height="56" class="w-16 h-12 sm:w-20 sm:h-14 rounded-lg bg-stone-950/50"></canvas>
+    </div>
+  </div>
+
+  <!-- Mode 2: Classic Bottom 6-Button Arcade Controls (Hidden when Translucent D-Pad Mode is active) -->
+  <div id="arcade-controls" class="hidden fixed bottom-3 sm:bottom-5 left-0 right-0 z-40 px-2 sm:px-6 flex items-end justify-between gap-1 max-w-3xl mx-auto pointer-events-none">
+    <!-- Left Cluster -->
+    <div class="flex items-center gap-1 sm:gap-2.5 pointer-events-auto">
+      <button id="ctrl-left" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
+        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        <span class="text-[9px] sm:text-[10px] text-stone-400 font-semibold">左移</span>
+      </button>
+      <button id="ctrl-down" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
+        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        <span class="text-[9px] sm:text-[10px] text-stone-400 font-semibold">緩降</span>
+      </button>
+      <button id="ctrl-right" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-stone-100">
+        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        <span class="text-[9px] sm:text-[10px] text-stone-400 font-semibold">右移</span>
+      </button>
+    </div>
+
+    <!-- Right Cluster -->
+    <div class="flex items-center gap-1 sm:gap-2.5 pointer-events-auto">
+      <button id="ctrl-hold" class="arcade-btn w-[44px] h-14 sm:w-14 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-amber-200">
+        <span class="text-sm sm:text-lg font-black leading-none">📦</span>
+        <span class="text-[9px] sm:text-[10px] text-stone-300 font-semibold mt-1">暫存</span>
+      </button>
+      <button id="ctrl-rotate" class="arcade-btn w-[48px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-sky-200">
+        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-3-6.7L21 8m0-5v5h-5"/></svg>
+        <span class="text-[9px] sm:text-[10px] text-stone-300 font-semibold">旋轉</span>
+      </button>
+      <button id="ctrl-drop" class="arcade-btn-accent w-[50px] h-14 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex flex-col items-center justify-center text-white">
+        <svg class="w-5 h-5 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 13l-7 7-7-7m14-8l-7 7-7-7"/></svg>
+        <span class="text-[9px] sm:text-[10px] text-amber-100 font-bold">直落</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mode 1 (Default): Semi-Transparent Overlay Control Panel (Topmost UI Layer: Bottom-Left D-Pad & Bottom-Right Clockwise Rotate) -->
+  <div id="translucent-controls" class="fixed inset-0 z-40 pointer-events-none">
+    <!-- Bottom-Left: Semi-Transparent Up/Down/Left/Right D-Pad (Up = Hard Drop) -->
+    <div class="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 pointer-events-auto">
+      <div class="grid grid-cols-3 grid-rows-3 gap-1.5 w-36 h-36 sm:w-44 sm:h-44">
+        <!-- Row 1: Up (Hard Drop) -->
+        <div></div>
+        <button id="dpad-up" title="直接掉落 (Hard Drop)" class="hud-translucent-btn rounded-2xl flex flex-col items-center justify-center">
+          <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+          <span class="text-[9px] sm:text-[10px] font-bold tracking-tight text-amber-200/90 -mt-0.5">直落</span>
+        </button>
+        <div></div>
+
+        <!-- Row 2: Left & Right -->
+        <button id="dpad-left" title="左移" class="hud-translucent-btn rounded-2xl flex items-center justify-center">
+          <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="rounded-2xl bg-stone-900/20 border border-amber-200/15 flex items-center justify-center">
+          <div class="w-2.5 h-2.5 rounded-full bg-amber-200/35"></div>
+        </div>
+        <button id="dpad-right" title="右移" class="hud-translucent-btn rounded-2xl flex items-center justify-center">
+          <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </button>
+
+        <!-- Row 3: Down (Soft Drop) -->
+        <div></div>
+        <button id="dpad-down" title="緩降" class="hud-translucent-btn rounded-2xl flex flex-col items-center justify-center">
+          <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          <span class="text-[9px] sm:text-[10px] font-semibold text-stone-200/80 -mt-0.5">緩降</span>
+        </button>
+        <div></div>
+      </div>
+    </div>
+
+    <!-- Bottom-Right: Semi-Transparent Clockwise Rotate Button (+ discreet Hold pill above) -->
+    <div class="fixed bottom-5 right-4 sm:bottom-7 sm:right-7 flex flex-col items-center gap-3 pointer-events-auto">
+      <button id="dpad-hold" title="暫存紙箱 (Hold)" class="hud-translucent-btn px-3.5 py-1.5 rounded-full flex items-center gap-1 text-xs font-bold">
+        <span>📦</span>
+        <span>暫存</span>
+      </button>
+      <button id="dpad-rotate" title="順時鐘旋轉" class="hud-translucent-btn w-20 h-20 sm:w-24 sm:h-24 rounded-full flex flex-col items-center justify-center">
+        <svg class="w-9 h-9 sm:w-11 sm:h-11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-3-6.7L21 8m0-5v5h-5" />
+        </svg>
+        <span class="text-[10px] sm:text-xs font-bold tracking-wide text-amber-100/95 mt-0.5">順時鐘旋轉</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Start / Pause / Game Over Modal Overlay -->
+  <div id="modal-overlay" class="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-panel rounded-3xl p-6 sm:p-8 max-w-md w-full text-center flex flex-col items-center gap-4 border-amber-400/35">
+      <div class="w-16 h-16 rounded-2xl bg-amber-600/25 border border-amber-400/40 flex items-center justify-center text-4xl shadow-inner">
+        📦
+      </div>
+      <div>
+        <h2 id="modal-title" class="text-2xl sm:text-3xl font-black text-amber-100 tracking-wide">𓃥 白六紙箱俄羅斯方塊</h2>
+        <p id="modal-subtitle" class="text-xs sm:text-sm text-stone-300 mt-2 leading-relaxed">
+          將手工刷色、封箱膠帶與物流條碼的立方體瓦楞紙箱精準堆疊！可自由拖曳旋轉 3D 倉庫視角檢視懸空背板與投影，並匯出 <span class="text-amber-300 font-bold">.glb</span> 模型。
+        </p>
+      </div>
+
+      <!-- Final Score Box (Hidden on initial start) -->
+      <div id="modal-stats" class="hidden w-full grid grid-cols-3 gap-2 bg-stone-950/60 rounded-2xl p-3 border border-stone-700/60">
+        <div>
+          <div class="text-[10px] text-stone-400">最終分數</div>
+          <div id="final-score" class="text-lg font-black text-amber-400">0</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-stone-400">達成等級</div>
+          <div id="final-level" class="text-lg font-black text-stone-100">1</div>
+        </div>
+        <div>
+          <div class="text-[10px] text-stone-400">消除行數</div>
+          <div id="final-lines" class="text-lg font-black text-stone-100">0</div>
+        </div>
+      </div>
+
+      <div class="w-full flex flex-col gap-2.5 mt-1">
+        <button id="btn-modal-primary" class="arcade-btn-accent w-full py-3.5 rounded-2xl font-black text-base sm:text-lg text-white tracking-wider cursor-pointer">
+          開始堆疊紙箱
+        </button>
+        <button id="btn-modal-export" class="hidden w-full py-2.5 rounded-2xl bg-stone-800/90 hover:bg-stone-700/90 border border-amber-400/35 text-xs sm:text-sm font-bold text-amber-200 cursor-pointer transition">
+          📥 匯出當前 3D 紙箱堆疊 (.glb)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global runtime error safeguard
+    window.addEventListener('error', (event) => {
+      console.warn('Runtime notice:', event.message);
+    });
+
+    // --- 1. GAME CONSTANTS & TETROMINO DEFINITIONS ---
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 1.0;
+
+    // Authentic cardboard painted colors matching the reference studio warehouse photo
+    const TETROMINOES = {
+      I: {
+        color: '#189ad3', // Vibrant Cyan-Blue painted cardboard
+        accent: '#0e7490',
+        shapes: [
+          [[0,1],[1,1],[2,1],[3,1]],
+          [[2,0],[2,1],[2,2],[2,3]],
+          [[0,2],[1,2],[2,2],[3,2]],
+          [[1,0],[1,1],[1,2],[1,3]]
+        ]
+      },
+      O: {
+        color: '#eab308', // Bright Painted Yellow cardboard
+        accent: '#ca8a04',
+        shapes: [
+          [[1,0],[2,0],[1,1],[2,1]],
+          [[1,0],[2,0],[1,1],[2,1]],
+          [[1,0],[2,0],[1,1],[2,1]],
+          [[1,0],[2,0],[1,1],[2,1]]
+        ]
+      },
+      T: {
+        color: '#9333ea', // Hand-brushed Purple cardboard
+        accent: '#7e22ce',
+        shapes: [
+          [[1,0],[0,1],[1,1],[2,1]],
+          [[1,0],[1,1],[2,1],[1,2]],
+          [[0,1],[1,1],[2,1],[1,2]],
+          [[1,0],[0,1],[1,1],[1,2]]
+        ]
+      },
+      S: {
+        color: '#16a34a', // Studio Painted Green cardboard
+        accent: '#15803d',
+        shapes: [
+          [[1,0],[2,0],[0,1],[1,1]],
+          [[1,0],[1,1],[2,1],[2,2]],
+          [[1,1],[2,1],[0,2],[1,2]],
+          [[0,0],[0,1],[1,1],[1,2]]
+        ]
+      },
+      Z: {
+        color: '#dc2626', // Bold Painted Red cardboard
+        accent: '#b91c1c',
+        shapes: [
+          [[0,0],[1,0],[1,1],[2,1]],
+          [[2,0],[1,1],[2,1],[1,2]],
+          [[0,1],[1,1],[1,2],[2,2]],
+          [[1,0],[0,1],[1,1],[0,2]]
+        ]
+      },
+      J: {
+        color: '#2563eb', // Cobalt Blue cardboard
+        accent: '#1d4ed8',
+        shapes: [
+          [[0,0],[0,1],[1,1],[2,1]],
+          [[1,0],[2,0],[1,1],[1,2]],
+          [[0,1],[1,1],[2,1],[2,2]],
+          [[1,0],[1,1],[0,2],[1,2]]
+        ]
+      },
+      L: {
+        color: '#ea580c', // Kraft-Orange painted cardboard
+        accent: '#c2410c',
+        shapes: [
+          [[2,0],[0,1],[1,1],[2,1]],
+          [[1,0],[1,1],[1,2],[2,2]],
+          [[0,1],[1,1],[2,1],[0,2]],
+          [[0,0],[1,0],[1,1],[1,2]]
+        ]
+      }
+    };
+
+    const PIECE_KEYS = Object.keys(TETROMINOES);
+
+    // Basic SRS Wall Kick offsets
+    const WALL_KICKS = [
+      [0, 0], [-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [-2, 0], [2, 0]
+    ];
+
+    // --- 2. PROCEDURAL SOUND SYNTHESIZER & KOROBEINIKI BGM (WEB AUDIO API) ---
+    const NOTE_FREQS = {
+      REST: 0,
+      E2: 82.41, A2: 110.00, B2: 123.47, C3: 130.81, D3: 146.83, E3: 164.81, Gs3: 207.65, A3: 220.00,
+      B3: 246.94, C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, Gs4: 415.30, A4: 440.00,
+      B4: 493.88, C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00
+    };
+
+    const KOROBEINIKI_MELODY = [
+      ['E5', 2], ['B4', 1], ['C5', 1], ['D5', 2], ['C5', 1], ['B4', 1],
+      ['A4', 2], ['A4', 1], ['C5', 1], ['E5', 2], ['D5', 1], ['C5', 1],
+      ['B4', 3], ['C5', 1], ['D5', 2], ['E5', 2],
+      ['C5', 2], ['A4', 2], ['A4', 2], ['REST', 2],
+      ['REST', 1], ['D5', 2], ['F5', 1], ['A5', 2], ['G5', 1], ['F5', 1],
+      ['E5', 3], ['C5', 1], ['E5', 2], ['D5', 1], ['C5', 1],
+      ['B4', 2], ['B4', 1], ['C5', 1], ['D5', 2], ['E5', 2],
+      ['C5', 2], ['A4', 2], ['A4', 2], ['REST', 2],
+      ['E4', 4], ['C4', 4],
+      ['D4', 4], ['B3', 4],
+      ['C4', 4], ['A3', 4],
+      ['Gs3', 4], ['B3', 2], ['REST', 2],
+      ['E4', 4], ['C4', 4],
+      ['D4', 4], ['B3', 4],
+      ['C4', 2], ['E4', 2], ['A4', 4],
+      ['Gs4', 6], ['REST', 2]
+    ];
+
+    const KOROBEINIKI_BASS = [
+      ['E2', 1], ['E3', 1], ['E2', 1], ['E3', 1], ['E2', 1], ['E3', 1], ['E2', 1], ['E3', 1],
+      ['A2', 1], ['A3', 1], ['A2', 1], ['A3', 1], ['A2', 1], ['A3', 1], ['A2', 1], ['A3', 1],
+      ['Gs3', 1], ['E3', 1], ['Gs3', 1], ['E3', 1], ['E2', 1], ['E3', 1], ['Gs3', 1], ['B3', 1],
+      ['A2', 1], ['A3', 1], ['A2', 1], ['A3', 1], ['A2', 1], ['B2', 1], ['C3', 1], ['D3', 1],
+      ['D3', 1], ['A3', 1], ['D3', 1], ['A3', 1], ['D3', 1], ['A3', 1], ['D3', 1], ['A3', 1],
+      ['C3', 1], ['G3', 1], ['C3', 1], ['G3', 1], ['C3', 1], ['G3', 1], ['C3', 1], ['G3', 1],
+      ['B2', 1], ['E3', 1], ['B2', 1], ['E3', 1], ['E2', 1], ['E3', 1], ['Gs3', 1], ['B3', 1],
+      ['A2', 1], ['E3', 1], ['A2', 1], ['E3', 1], ['A2', 2], ['REST', 2],
+      ['A2', 2], ['E3', 2], ['A2', 2], ['E3', 2],
+      ['Gs3', 2], ['E3', 2], ['Gs3', 2], ['E3', 2],
+      ['A2', 2], ['E3', 2], ['A2', 2], ['E3', 2],
+      ['E2', 2], ['B2', 2], ['E3', 2], ['REST', 2],
+      ['A2', 2], ['E3', 2], ['A2', 2], ['E3', 2],
+      ['Gs3', 2], ['E3', 2], ['Gs3', 2], ['E3', 2],
+      ['A2', 2], ['C3', 2], ['E3', 2], ['A3', 2],
+      ['E3', 2], ['B2', 2], ['E2', 2], ['REST', 2]
+    ];
+
+    class CardboardAudio {
+      constructor() {
+        this.ctx = null;
+        this.sfxMuted = false;
+        this.bgmMuted = false;
+        this.iosUnlocked = false;
+        this.silentAudioEl = null;
+
+        this.bgmPlaying = false;
+        this.bgmTimerId = null;
+        this.melodyIdx = 0;
+        this.bassIdx = 0;
+        this.nextMelodyTime = 0;
+        this.nextBassTime = 0;
+        this.currentBpm = 132;
+      }
+
+      unlockIOSMediaChannel() {
+        if (this.iosUnlocked) return;
+        try {
+          if (!this.silentAudioEl) {
+            const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+            const audio = document.createElement('audio');
+            audio.setAttribute('playsinline', '');
+            audio.setAttribute('webkit-playsinline', '');
+            audio.loop = true;
+            audio.volume = 0.01;
+            audio.src = silentWav;
+            this.silentAudioEl = audio;
+          }
+          const playPromise = this.silentAudioEl.play();
+          if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(() => {
+              this.iosUnlocked = true;
+            }).catch(() => {});
+          } else {
+            this.iosUnlocked = true;
+          }
+        } catch (e) {}
+      }
+
+      init() {
+        this.unlockIOSMediaChannel();
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().then(() => {
+            if (!this.bgmMuted && isPlaying && !isPaused && !isGameOver && !this.bgmPlaying) {
+              this.startBgm();
+            }
+          }).catch(() => {});
+        }
+      }
+
+      toggleSfx() {
+        this.init();
+        this.sfxMuted = !this.sfxMuted;
+        return this.sfxMuted;
+      }
+
+      toggleBgm() {
+        this.init();
+        this.bgmMuted = !this.bgmMuted;
+        if (this.bgmMuted) {
+          this.stopBgm();
+        } else {
+          this.startBgm();
+        }
+        return this.bgmMuted;
+      }
+
+      setLevelTempo(lv) {
+        this.currentBpm = Math.min(188, 132 + (lv - 1) * 5.5);
+      }
+
+      startBgm() {
+        if (this.bgmMuted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        if (this.ctx.state !== 'running') {
+          this.ctx.resume().then(() => {
+            if (!this.bgmMuted && !this.bgmPlaying) {
+              this.startBgm();
+            }
+          }).catch(() => {});
+          return;
+        }
+
+        if (this.bgmPlaying) return;
+
+        this.bgmPlaying = true;
+        const startTime = this.ctx.currentTime + 0.03;
+        this.nextMelodyTime = startTime;
+        this.nextBassTime = startTime;
+
+        const scheduleLoop = () => {
+          if (!this.bgmPlaying || this.bgmMuted || !this.ctx) return;
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+
+          const lookahead = 0.25;
+          const eighthDur = (60 / this.currentBpm) / 2;
+
+          if (this.nextMelodyTime < this.ctx.currentTime - 0.1) {
+            this.nextMelodyTime = this.ctx.currentTime + 0.02;
+          }
+          if (this.nextBassTime < this.ctx.currentTime - 0.1) {
+            this.nextBassTime = this.ctx.currentTime + 0.02;
+          }
+
+          while (this.nextMelodyTime < this.ctx.currentTime + lookahead) {
+            const [noteName, units] = KOROBEINIKI_MELODY[this.melodyIdx];
+            const dur = units * eighthDur;
+            const freq = NOTE_FREQS[noteName] || 0;
+            if (freq > 0) {
+              this.triggerBgmNote(freq, this.nextMelodyTime, dur * 0.88, 'lead');
+            }
+            this.nextMelodyTime += dur;
+            this.melodyIdx = (this.melodyIdx + 1) % KOROBEINIKI_MELODY.length;
+          }
+
+          while (this.nextBassTime < this.ctx.currentTime + lookahead) {
+            const [noteName, units] = KOROBEINIKI_BASS[this.bassIdx];
+            const dur = units * eighthDur;
+            const freq = NOTE_FREQS[noteName] || 0;
+            if (freq > 0) {
+              this.triggerBgmNote(freq, this.nextBassTime, dur * 0.82, 'bass');
+            }
+            this.nextBassTime += dur;
+            this.bassIdx = (this.bassIdx + 1) % KOROBEINIKI_BASS.length;
+          }
+
+          this.bgmTimerId = setTimeout(scheduleLoop, 45);
+        };
+
+        scheduleLoop();
+      }
+
+      stopBgm() {
+        this.bgmPlaying = false;
+        if (this.bgmTimerId) {
+          clearTimeout(this.bgmTimerId);
+          this.bgmTimerId = null;
+        }
+      }
+
+      resetBgmPosition() {
+        this.melodyIdx = 0;
+        this.bassIdx = 0;
+      }
+
+      triggerBgmNote(freq, startTime, duration, voice) {
+        if (!this.ctx || this.bgmMuted) return;
+
+        if (voice === 'lead') {
+          const oscMain = this.ctx.createOscillator();
+          const oscOver = this.ctx.createOscillator();
+          const filter = this.ctx.createBiquadFilter();
+          const gain = this.ctx.createGain();
+
+          oscMain.type = 'triangle';
+          oscMain.frequency.setValueAtTime(freq, startTime);
+
+          oscOver.type = 'square';
+          oscOver.frequency.setValueAtTime(freq, startTime);
+
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1950, startTime);
+          filter.frequency.exponentialRampToValueAtTime(780, startTime + duration);
+
+          const oscOverGain = this.ctx.createGain();
+          oscOverGain.gain.value = 0.28;
+
+          gain.gain.setValueAtTime(0.0001, startTime);
+          gain.gain.linearRampToValueAtTime(0.18, startTime + 0.014);
+          gain.gain.exponentialRampToValueAtTime(0.0008, startTime + duration);
+
+          oscMain.connect(filter);
+          oscOver.connect(oscOverGain);
+          oscOverGain.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          oscMain.start(startTime);
+          oscOver.start(startTime);
+          oscMain.stop(startTime + duration + 0.02);
+          oscOver.stop(startTime + duration + 0.02);
+        } else {
+          const osc = this.ctx.createOscillator();
+          const filter = this.ctx.createBiquadFilter();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          filter.type = 'lowpass';
+          filter.frequency.value = 480;
+
+          gain.gain.setValueAtTime(0.0001, startTime);
+          gain.gain.linearRampToValueAtTime(0.19, startTime + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0008, startTime + duration);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + duration + 0.02);
+        }
+      }
+
+      playMove(pitch = 190) {
+        if (this.sfxMuted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(pitch, now);
+        osc.frequency.exponentialRampToValueAtTime(65, now + 0.055);
+
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.065);
+      }
+
+      playDrop(hard = false) {
+        if (this.sfxMuted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(hard ? 135 : 105, now);
+        osc.frequency.exponentialRampToValueAtTime(34, now + (hard ? 0.18 : 0.11));
+
+        gain.gain.setValueAtTime(hard ? 0.45 : 0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (hard ? 0.19 : 0.12));
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+
+        const bufferSize = this.ctx.sampleRate * 0.07;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 650;
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(hard ? 0.25 : 0.12, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(this.ctx.destination);
+        noise.start(now);
+      }
+
+      playLineClear(count) {
+        if (this.sfxMuted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const ripDur = 0.16 + count * 0.04;
+        const bufferSize = Math.floor(this.ctx.sampleRate * ripDur);
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * (0.6 + 0.4 * Math.sin(i * 0.15));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(1400, now);
+        filter.frequency.linearRampToValueAtTime(3200, now + ripDur);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.22, now);
+        nGain.gain.exponentialRampToValueAtTime(0.001, now + ripDur);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(this.ctx.destination);
+        noise.start(now);
+
+        const notes = [330, 392, 493.88, 659.25];
+        for (let i = 0; i < Math.min(count + 1, 4); i++) {
+          const t = now + i * 0.065;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(notes[i], t);
+          g.gain.setValueAtTime(0.25, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.26);
+        }
+      }
+
+      playGameOver() {
+        if (this.sfxMuted) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const freqs = [240, 210, 180, 130];
+        freqs.forEach((f, idx) => {
+          const t = now + idx * 0.14;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, t);
+          osc.frequency.exponentialRampToValueAtTime(f * 0.85, t + 0.18);
+
+          const lp = this.ctx.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.value = 500;
+
+          g.gain.setValueAtTime(0.2, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+          osc.connect(lp);
+          lp.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.24);
+        });
+      }
+    }
+
+    const soundFX = new CardboardAudio();
+
+    function unlockAudioOnGesture() {
+      soundFX.init();
+      if (isPlaying && !isPaused && !isGameOver && !soundFX.bgmMuted && !soundFX.bgmPlaying) {
+        soundFX.startBgm();
+      }
+    }
+    ['pointerdown', 'touchstart', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, unlockAudioOnGesture, { capture: true, passive: true });
+    });
+
+    // --- 3. PROCEDURAL CARDBOARD CUBE TEXTURES & MATERIALS ---
+    const materialCache = {};
+    let sharedBoxGeometry = null;
+    let sharedBumpTexture = null;
+
+    function createCorrugatedBumpTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(0, 0, 256, 256);
+
+      for (let x = 0; x < 256; x += 4) {
+        ctx.fillStyle = x % 8 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+        ctx.fillRect(x, 0, 2, 256);
+      }
+      for (let i = 0; i < 1800; i++) {
+        const px = Math.random() * 256;
+        const py = Math.random() * 256;
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+        ctx.fillRect(px, py, 2, 1);
+      }
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    function createCardboardFaceTexture(paintHex, faceVariant = 'side') {
+      const size = 512;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // 1. Base Kraft Cardboard Brown
+      ctx.fillStyle = '#b98b56';
+      ctx.fillRect(0, 0, size, size);
+
+      for (let i = 0; i < 3200; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const r = Math.random();
+        ctx.fillStyle = r > 0.5 ? 'rgba(85, 55, 25, 0.08)' : 'rgba(245, 220, 185, 0.08)';
+        ctx.fillRect(x, y, 2 + Math.random() * 3, 1.5);
+      }
+
+      // 2. Hand-painted Tetris Color Zone
+      const margin = 34;
+      ctx.save();
+      ctx.fillStyle = paintHex;
+      ctx.fillRect(margin, margin, size - margin * 2, size - margin * 2);
+
+      for (let x = margin; x < size - margin; x += 6) {
+        ctx.fillStyle = (x % 12 === 0) ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.055)';
+        ctx.fillRect(x, margin, 4, size - margin * 2);
+      }
+
+      ctx.strokeStyle = paintHex;
+      ctx.lineWidth = 4;
+      ctx.setLineDash([14, 6, 22, 5]);
+      ctx.strokeRect(margin - 1, margin - 1, size - margin * 2 + 2, size - margin * 2 + 2);
+      ctx.restore();
+
+      // 3. Cardboard Flap Seam Line
+      ctx.strokeStyle = 'rgba(62, 38, 16, 0.55)';
+      ctx.lineWidth = 3;
+      if (faceVariant === 'top' || faceVariant === 'front') {
+        ctx.beginPath();
+        ctx.moveTo(0, size / 2);
+        ctx.lineTo(size, size / 2);
+        ctx.stroke();
+      }
+
+      // 4. Shipping Icons (Barcode & Up-Arrows)
+      ctx.save();
+      ctx.fillStyle = 'rgba(38, 24, 12, 0.72)';
+      ctx.strokeStyle = 'rgba(38, 24, 12, 0.72)';
+      ctx.lineWidth = 3;
+
+      if (faceVariant === 'front' || faceVariant === 'side') {
+        const ax = size - 78;
+        const ay = 52;
+        ctx.strokeRect(ax - 8, ay - 8, 52, 46);
+        for (let k = 0; k < 2; k++) {
+          const ox = ax + k * 20;
+          ctx.beginPath();
+          ctx.moveTo(ox + 8, ay + 2);
+          ctx.lineTo(ox + 16, ay + 12);
+          ctx.lineTo(ox + 11, ay + 12);
+          ctx.lineTo(ox + 11, ay + 30);
+          ctx.lineTo(ox + 5, ay + 30);
+          ctx.lineTo(ox + 5, ay + 12);
+          ctx.lineTo(ox, ay + 12);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        const bx = 48;
+        const by = size - 88;
+        ctx.fillStyle = 'rgba(232, 214, 186, 0.85)';
+        ctx.fillRect(bx, by, 105, 42);
+        ctx.fillStyle = 'rgba(32, 22, 14, 0.85)';
+        let curX = bx + 8;
+        const pattern = [3,1,2,4,1,2,3,1,1,3,2,1,4,2,1,2,3,1,2];
+        pattern.forEach((w, idx) => {
+          if (idx % 2 === 0) ctx.fillRect(curX, by + 6, w * 1.8, 24);
+          curX += w * 2.2;
+        });
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('BOX-B6-TETRIS', bx + 10, by + 38);
+      }
+      ctx.restore();
+
+      // 5. Packing Tape Strips
+      ctx.save();
+      ctx.fillStyle = 'rgba(218, 182, 122, 0.42)';
+      if (faceVariant === 'top') {
+        ctx.fillRect(0, size / 2 - 26, size, 52);
+        ctx.strokeStyle = 'rgba(255, 240, 210, 0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(0, size / 2 - 26, size, 52);
+      } else {
+        ctx.fillRect(size / 2 - 24, 0, 48, 72);
+        ctx.fillRect(size / 2 - 24, size - 72, 48, 72);
+        ctx.fillStyle = 'rgba(205, 168, 110, 0.28)';
+        ctx.fillRect(0, 0, size, 16);
+        ctx.fillRect(0, size - 16, size, 16);
+      }
+      ctx.restore();
+
+      // 6. Outer Bevel Highlight & Crease Shadow
+      ctx.strokeStyle = 'rgba(255, 235, 205, 0.32)';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(3, 3, size - 6, size - 6);
+
+      ctx.strokeStyle = 'rgba(55, 34, 14, 0.45)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(1.5, 1.5, size - 3, size - 3);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.anisotropy = 4;
+      return texture;
+    }
+
+    function getCardboardMaterials(typeKey) {
+      if (materialCache[typeKey]) return materialCache[typeKey];
+
+      if (!sharedBumpTexture) {
+        sharedBumpTexture = createCorrugatedBumpTexture();
+      }
+
+      const hex = TETROMINOES[typeKey].color;
+      const sideTex = createCardboardFaceTexture(hex, 'side');
+      const frontTex = createCardboardFaceTexture(hex, 'front');
+      const topTex = createCardboardFaceTexture(hex, 'top');
+
+      const makeMat = (map) => new THREE.MeshStandardMaterial({
+        map,
+        bumpMap: sharedBumpTexture,
+        bumpScale: 0.015,
+        roughness: 0.78,
+        metalness: 0.04
+      });
+
+      const mats = [
+        makeMat(sideTex),
+        makeMat(sideTex),
+        makeMat(topTex),
+        makeMat(topTex),
+        makeMat(frontTex),
+        makeMat(frontTex)
+      ];
+
+      materialCache[typeKey] = mats;
+      return mats;
+    }
+
+    function createCardboardCubeMesh(typeKey, isGhost = false) {
+      if (!sharedBoxGeometry) {
+        sharedBoxGeometry = new THREE.BoxGeometry(BLOCK_SIZE * 0.975, BLOCK_SIZE * 0.975, BLOCK_SIZE * 0.975);
+      }
+
+      if (isGhost) {
+        const ghostColor = TETROMINOES[typeKey].color;
+        const geo = new THREE.BoxGeometry(BLOCK_SIZE * 0.96, BLOCK_SIZE * 0.96, BLOCK_SIZE * 0.96);
+        const mat = new THREE.MeshBasicMaterial({
+          color: ghostColor,
+          transparent: true,
+          opacity: 0.22,
+          depthWrite: false
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+
+        const edges = new THREE.EdgesGeometry(geo);
+        const line = new THREE.LineSegments(
+          edges,
+          new THREE.LineBasicMaterial({ color: 0xfde68a, transparent: true, opacity: 0.65 })
+        );
+        mesh.add(line);
+        return mesh;
+      }
+
+      const mesh = new THREE.Mesh(sharedBoxGeometry, getCardboardMaterials(typeKey));
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
+    // --- 4. THREE.JS SCENE & WAREHOUSE STUDIO ENVIRONMENT ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1b1815);
+    scene.fog = new THREE.FogExp2(0x1b1815, 0.016);
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 150);
+    const DEFAULT_CAM_POS = new THREE.Vector3(0, 12.0, 29.5);
+    const DEFAULT_CAM_TARGET = new THREE.Vector3(0, 10.0, 0);
+    camera.position.copy(DEFAULT_CAM_POS);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.copy(DEFAULT_CAM_TARGET);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.minDistance = 14;
+    controls.maxDistance = 48;
+    controls.maxPolarAngle = Math.PI * 0.49;
+    controls.enablePan = false;
+    controls.update();
+
+    const ambientLight = new THREE.AmbientLight(0xfff4e4, 0.58);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xfff8ee, 0x3b3127, 0.42);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff6e8, 0.95);
+    dirLight.position.set(14, 28, 20);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 2;
+    dirLight.shadow.camera.far = 75;
+    const d = 22;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d + 6;
+    dirLight.shadow.camera.bottom = -d;
+    dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight);
+
+    const rimLight = new THREE.DirectionalLight(0xcbd5e1, 0.32);
+    rimLight.position.set(-16, 15, -14);
+    scene.add(rimLight);
+
+    function buildWarehouseEnvironment() {
+      const floorCanvas = document.createElement('canvas');
+      floorCanvas.width = 512;
+      floorCanvas.height = 512;
+      const fctx = floorCanvas.getContext('2d');
+      fctx.fillStyle = '#332f2c';
+      fctx.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 6000; i++) {
+        fctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)';
+        fctx.fillRect(Math.random() * 512, Math.random() * 512, 3, 3);
+      }
+      fctx.strokeStyle = 'rgba(15, 13, 12, 0.45)';
+      fctx.lineWidth = 3;
+      fctx.strokeRect(0, 0, 512, 512);
+
+      const floorTex = new THREE.CanvasTexture(floorCanvas);
+      floorTex.wrapS = THREE.RepeatWrapping;
+      floorTex.wrapT = THREE.RepeatWrapping;
+      floorTex.repeat.set(14, 14);
+
+      const floorMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(120, 120),
+        new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.88, metalness: 0.05 })
+      );
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.position.y = -0.45;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // Wooden Pallet Base under the 10x20 Tetris Well (top surface strictly at y = 0.0)
+      // Extended Z depth from Z = -2.7 to Z = +0.9, leaving 2.0 units gap between blocks (Z=-0.5) and back wall (Z=-2.5)
+      const palletGroup = new THREE.Group();
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x7c5832, roughness: 0.85 });
+      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x543a1f, roughness: 0.9 });
+
+      const palletDepth = 3.6;
+      const palletCenterZ = -0.9;
+
+      const topPlank = new THREE.Mesh(new THREE.BoxGeometry(COLS + 1.2, 0.22, palletDepth), woodMat);
+      topPlank.position.set(0, -0.11, palletCenterZ);
+      topPlank.castShadow = true;
+      topPlank.receiveShadow = true;
+      palletGroup.add(topPlank);
+
+      [-4.2, 0, 4.2].forEach(px => {
+        const block = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.23, palletDepth - 0.2), darkWoodMat);
+        block.position.set(px, -0.335, palletCenterZ);
+        block.castShadow = true;
+        block.receiveShadow = true;
+        palletGroup.add(block);
+      });
+      scene.add(palletGroup);
+
+      // Backboard & Grid Guide positioned 2.0 cardboard units behind the blocks
+      const backGroup = new THREE.Group();
+      const backWallFrontZ = -2.5;
+      const backMat = new THREE.MeshStandardMaterial({
+        color: 0x2a2520,
+        roughness: 0.88,
+        transparent: true,
+        opacity: 0.88
+      });
+      const backBoard = new THREE.Mesh(new THREE.BoxGeometry(COLS + 0.36, ROWS + 0.2, 0.16), backMat);
+      backBoard.position.set(0, ROWS / 2 + 0.1, backWallFrontZ - 0.08);
+      backBoard.receiveShadow = true;
+      backGroup.add(backBoard);
+
+      const gridZ = backWallFrontZ + 0.005;
+      const gridPoints = [];
+      for (let x = 0; x <= COLS; x++) {
+        const wx = x - COLS / 2;
+        gridPoints.push(new THREE.Vector3(wx, 0, gridZ));
+        gridPoints.push(new THREE.Vector3(wx, ROWS, gridZ));
+      }
+      for (let y = 0; y <= ROWS; y++) {
+        const wy = y;
+        gridPoints.push(new THREE.Vector3(-COLS / 2, wy, gridZ));
+        gridPoints.push(new THREE.Vector3(COLS / 2, wy, gridZ));
+      }
+      const gridGeo = new THREE.BufferGeometry().setFromPoints(gridPoints);
+      const gridLines = new THREE.LineSegments(
+        gridGeo,
+        new THREE.LineBasicMaterial({ color: 0xd6b48a, transparent: true, opacity: 0.18 })
+      );
+      backGroup.add(gridLines);
+
+      const railDepth = 3.2;
+      const railCenterZ = -0.95;
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x47413b, roughness: 0.6, metalness: 0.35 });
+      const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.18, ROWS + 0.2, railDepth), railMat);
+      leftRail.position.set(-COLS / 2 - 0.12, (ROWS + 0.2) / 2, railCenterZ);
+      leftRail.castShadow = true;
+      leftRail.receiveShadow = true;
+      backGroup.add(leftRail);
+
+      const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.18, ROWS + 0.2, railDepth), railMat);
+      rightRail.position.set(COLS / 2 + 0.12, (ROWS + 0.2) / 2, railCenterZ);
+      rightRail.castShadow = true;
+      rightRail.receiveShadow = true;
+      backGroup.add(rightRail);
+
+      scene.add(backGroup);
+
+      // Decorative Background Cardboard Stacks
+      const decoConfigs = [
+        { type: 'I', pos: [-9.5, 0.05, 3.5], rotY: 0.45 },
+        { type: 'O', pos: [9.0, 0.05, 2.8], rotY: -0.35 },
+        { type: 'T', pos: [10.5, 0.05, -3.5], rotY: 0.8 },
+        { type: 'L', pos: [-10.8, 0.05, -4.2], rotY: -0.6 }
+      ];
+      decoConfigs.forEach(cfg => {
+        const g = new THREE.Group();
+        const shape = TETROMINOES[cfg.type].shapes[0];
+        shape.forEach(([sx, sy]) => {
+          const cube = createCardboardCubeMesh(cfg.type, false);
+          cube.position.set(sx - 1.5, (2 - sy), 0);
+          g.add(cube);
+        });
+        g.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+        g.rotation.y = cfg.rotY;
+        scene.add(g);
+      });
+    }
+
+    buildWarehouseEnvironment();
+
+    // --- 5. GAME STATE & 3D BLOCK MANAGERS ---
+    const playfieldBlocksGroup = new THREE.Group();
+    playfieldBlocksGroup.name = 'CardboardTetrisAssembly';
+    scene.add(playfieldBlocksGroup);
+
+    const activePieceGroup = new THREE.Group();
+    activePieceGroup.name = 'ActiveTetromino';
+    playfieldBlocksGroup.add(activePieceGroup);
+
+    const ghostPieceGroup = new THREE.Group();
+    ghostPieceGroup.name = 'GhostPreview';
+    scene.add(ghostPieceGroup);
+
+    const particlesGroup = new THREE.Group();
+    scene.add(particlesGroup);
+
+    let board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+
+    let bag = [];
+    let currentPiece = null;
+    let nextType = null;
+    let holdType = null;
+    let canHold = true;
+
+    let score = 0;
+    let lines = 0;
+    let level = 1;
+    let isPlaying = false;
+    let isPaused = false;
+    let isGameOver = false;
+    let isAnimatingRows = false;
+
+    let dropAccumulator = 0;
+    let lastTimestamp = 0;
+    let cameraShakeIntensity = 0;
+
+    const clearingAnimations = [];
+    const fallingRowAnimations = [];
+    const dustParticles = [];
+
+    function boardToWorld(bx, by) {
+      return {
+        x: bx - COLS / 2 + 0.5,
+        y: by + 0.5,
+        z: 0
+      };
+    }
+
+    function nextFromBag() {
+      if (bag.length === 0) {
+        bag = [...PIECE_KEYS];
+        for (let i = bag.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [bag[i], bag[j]] = [bag[j], bag[i]];
+        }
+      }
+      return bag.pop();
+    }
+
+    function isValidPosition(type, rot, px, py) {
+      const coords = TETROMINOES[type].shapes[rot];
+      for (const [dx, dy] of coords) {
+        const bx = px + dx;
+        const by = py - dy;
+        if (bx < 0 || bx >= COLS || by < 0) return false;
+        if (by < ROWS && board[by][bx] !== null) return false;
+      }
+      return true;
+    }
+
+    function getGhostY() {
+      if (!currentPiece) return 0;
+      let gy = currentPiece.y;
+      while (isValidPosition(currentPiece.type, currentPiece.rot, currentPiece.x, gy - 1)) {
+        gy--;
+      }
+      return gy;
+    }
+
+    function syncActiveAndGhostMeshes() {
+      while (activePieceGroup.children.length > 0) {
+        activePieceGroup.remove(activePieceGroup.children[0]);
+      }
+      while (ghostPieceGroup.children.length > 0) {
+        ghostPieceGroup.remove(ghostPieceGroup.children[0]);
+      }
+
+      if (!currentPiece || isGameOver) return;
+
+      const coords = TETROMINOES[currentPiece.type].shapes[currentPiece.rot];
+      const ghostY = getGhostY();
+
+      coords.forEach(([dx, dy]) => {
+        const bx = currentPiece.x + dx;
+        const by = currentPiece.y - dy;
+        const wPos = boardToWorld(bx, by);
+
+        const boxMesh = createCardboardCubeMesh(currentPiece.type, false);
+        boxMesh.position.set(wPos.x, wPos.y, wPos.z);
+        activePieceGroup.add(boxMesh);
+
+        const gBy = ghostY - dy;
+        if (gBy >= 0) {
+          const gPos = boardToWorld(bx, gBy);
+          const ghostMesh = createCardboardCubeMesh(currentPiece.type, true);
+          ghostMesh.position.set(gPos.x, gPos.y, gPos.z);
+          ghostPieceGroup.add(ghostMesh);
+        }
+      });
+    }
+
+    // --- 6. 2D MINI PREVIEW RENDERING (HOLD & NEXT) ---
+    function drawMiniPiece(canvasId, typeKey) {
+      const cvs = document.getElementById(canvasId);
+      if (!cvs) return;
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+      if (!typeKey) return;
+      const shape = TETROMINOES[typeKey].shapes[0];
+      const color = TETROMINOES[typeKey].color;
+
+      let minX = 99, maxX = -99, minY = 99, maxY = -99;
+      shape.forEach(([x, y]) => {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      });
+
+      const cell = 13;
+      const pieceW = (maxX - minX + 1) * cell;
+      const pieceH = (maxY - minY + 1) * cell;
+      const offsetX = (cvs.width - pieceW) / 2;
+      const offsetY = (cvs.height - pieceH) / 2;
+
+      shape.forEach(([x, y]) => {
+        const px = offsetX + (x - minX) * cell;
+        const py = offsetY + (y - minY) * cell;
+
+        ctx.fillStyle = '#b98b56';
+        ctx.fillRect(px + 0.5, py + 0.5, cell - 1, cell - 1);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(px + 2, py + 2, cell - 4, cell - 4);
+
+        ctx.fillStyle = 'rgba(235, 205, 155, 0.5)';
+        ctx.fillRect(px + cell / 2 - 1.5, py + 0.5, 3, cell - 1);
+      });
+    }
+
+    // --- 7. CORE TETRIS GAMEPLAY LOGIC ---
+    function spawnPiece(forcedType = null) {
+      const type = forcedType || nextType || nextFromBag();
+      if (!forcedType) {
+        nextType = nextFromBag();
+      }
+      currentPiece = {
+        type,
+        rot: 0,
+        x: 3,
+        y: ROWS - 1
+      };
+      canHold = true;
+
+      drawMiniPiece('canvas-next', nextType);
+      drawMiniPiece('canvas-hold', holdType);
+
+      if (!isValidPosition(currentPiece.type, currentPiece.rot, currentPiece.x, currentPiece.y)) {
+        triggerGameOver();
+        return;
+      }
+      syncActiveAndGhostMeshes();
+    }
+
+    function movePiece(dx, dy) {
+      if (!isPlaying || isPaused || isGameOver || isAnimatingRows || !currentPiece) return false;
+      const nx = currentPiece.x + dx;
+      const ny = currentPiece.y + dy;
+      if (isValidPosition(currentPiece.type, currentPiece.rot, nx, ny)) {
+        currentPiece.x = nx;
+        currentPiece.y = ny;
+        syncActiveAndGhostMeshes();
+        if (dx !== 0) soundFX.playMove(185);
+        return true;
+      }
+      return false;
+    }
+
+    function rotatePiece() {
+      if (!isPlaying || isPaused || isGameOver || isAnimatingRows || !currentPiece) return;
+      const nextRot = (currentPiece.rot + 1) % 4;
+      for (const [kx, ky] of WALL_KICKS) {
+        if (isValidPosition(currentPiece.type, nextRot, currentPiece.x + kx, currentPiece.y + ky)) {
+          currentPiece.rot = nextRot;
+          currentPiece.x += kx;
+          currentPiece.y += ky;
+          syncActiveAndGhostMeshes();
+          soundFX.playMove(260);
+          return;
+        }
+      }
+    }
+
+    function holdCurrentPiece() {
+      if (!isPlaying || isPaused || isGameOver || isAnimatingRows || !currentPiece || !canHold) return;
+      soundFX.playMove(220);
+      const prevHold = holdType;
+      holdType = currentPiece.type;
+      canHold = false;
+      drawMiniPiece('canvas-hold', holdType);
+
+      if (prevHold === null) {
+        spawnPiece();
+      } else {
+        currentPiece = { type: prevHold, rot: 0, x: 3, y: ROWS - 1 };
+        if (!isValidPosition(currentPiece.type, currentPiece.rot, currentPiece.x, currentPiece.y)) {
+          triggerGameOver();
+          return;
+        }
+        syncActiveAndGhostMeshes();
+      }
+    }
+
+    function spawnImpactParticles(worldPositions, colorHex, countPerBlock = 4, includeTapeSpark = false) {
+      const geo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+      worldPositions.forEach(pos => {
+        for (let i = 0; i < countPerBlock; i++) {
+          const isSpark = includeTapeSpark && i % 2 === 0;
+          const mat = new THREE.MeshBasicMaterial({
+            color: isSpark ? 0xfef3c7 : (colorHex || 0xd6b48a),
+            transparent: true,
+            opacity: 0.9
+          });
+          const p = new THREE.Mesh(geo, mat);
+          p.position.set(
+            pos.x + (Math.random() - 0.5) * 0.85,
+            pos.y + (includeTapeSpark ? (Math.random() - 0.5) * 0.6 : -0.45),
+            pos.z + (Math.random() - 0.5) * 0.85
+          );
+          particlesGroup.add(p);
+          dustParticles.push({
+            mesh: p,
+            vx: (Math.random() - 0.5) * (includeTapeSpark ? 4.8 : 3.2),
+            vy: (includeTapeSpark ? 1.8 : 1.2) + Math.random() * 2.5,
+            vz: (Math.random() - 0.5) * (includeTapeSpark ? 4.8 : 3.2) + (includeTapeSpark ? 1.2 : 0),
+            life: 1.0
+          });
+        }
+      });
+    }
+
+    function hardDrop() {
+      if (!isPlaying || isPaused || isGameOver || isAnimatingRows || !currentPiece) return;
+      const targetY = getGhostY();
+      const dropDistance = currentPiece.y - targetY;
+      currentPiece.y = targetY;
+
+      score += dropDistance * 2;
+      updateHUD();
+
+      const coords = TETROMINOES[currentPiece.type].shapes[currentPiece.rot];
+      const worldPositions = coords.map(([dx, dy]) => boardToWorld(currentPiece.x + dx, currentPiece.y - dy));
+      spawnImpactParticles(worldPositions, TETROMINOES[currentPiece.type].color);
+      cameraShakeIntensity = Math.min(0.28, 0.1 + dropDistance * 0.01);
+
+      soundFX.playDrop(true);
+      lockPiece();
+    }
+
+    function lockPiece() {
+      const coords = TETROMINOES[currentPiece.type].shapes[currentPiece.rot];
+      for (const [dx, dy] of coords) {
+        const bx = currentPiece.x + dx;
+        const by = currentPiece.y - dy;
+        if (by >= ROWS) {
+          triggerGameOver();
+          return;
+        }
+        const mesh = createCardboardCubeMesh(currentPiece.type, false);
+        const wPos = boardToWorld(bx, by);
+        mesh.position.set(wPos.x, wPos.y, wPos.z);
+        playfieldBlocksGroup.add(mesh);
+        board[by][bx] = { type: currentPiece.type, mesh };
+      }
+
+      currentPiece = null;
+      syncActiveAndGhostMeshes();
+
+      const hasCleared = checkAndClearLines();
+      if (!hasCleared) {
+        spawnPiece();
+      }
+    }
+
+    function showScorePopup(text, subtext = '') {
+      const layer = document.getElementById('popup-layer');
+      if (!layer) return;
+      const el = document.createElement('div');
+      el.className = 'score-popup absolute left-1/2 top-1/3 text-center pointer-events-none';
+      el.innerHTML = `
+        <div class="text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-[0_3px_6px_rgba(0,0,0,0.85)]">${text}</div>
+        ${subtext ? `<div class="text-xs sm:text-sm font-bold text-white bg-amber-700/80 px-2.5 py-0.5 rounded-full mt-1 inline-block">${subtext}</div>` : ''}
+      `;
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 1150);
+    }
+
+    function checkAndClearLines() {
+      const fullRows = [];
+      for (let y = 0; y < ROWS; y++) {
+        if (board[y].every(cell => cell !== null)) {
+          fullRows.push(y);
+        }
+      }
+
+      if (fullRows.length === 0) return false;
+
+      isAnimatingRows = true;
+
+      const lineScores = [0, 100, 300, 500, 800];
+      const earned = (lineScores[fullRows.length] || 800) * level;
+      score += earned;
+      lines += fullRows.length;
+      level = Math.floor(lines / 10) + 1;
+      soundFX.setLevelTempo(level);
+      updateHUD();
+
+      const labels = ['', 'SINGLE!', 'DOUBLE!', 'TRIPLE!', 'TETRIS 紙箱全消!'];
+      showScorePopup(`+${earned}`, labels[fullRows.length] || '');
+      soundFX.playLineClear(fullRows.length);
+      cameraShakeIntensity = Math.min(0.32, 0.12 + fullRows.length * 0.05);
+
+      const clearDuration = 0.38;
+      fullRows.forEach(y => {
+        for (let x = 0; x < COLS; x++) {
+          const cell = board[y][x];
+          if (cell && cell.mesh) {
+            const wPos = boardToWorld(x, y);
+            if (Array.isArray(cell.mesh.material)) {
+              cell.mesh.material = cell.mesh.material.map(m => m.clone());
+            }
+            clearingAnimations.push({
+              mesh: cell.mesh,
+              baseX: wPos.x,
+              baseY: wPos.y,
+              baseZ: wPos.z,
+              delay: x * 0.018,
+              elapsed: 0,
+              duration: clearDuration - x * 0.012,
+              spawnedBurst: false,
+              colorHex: TETROMINOES[cell.type].color
+            });
+          }
+        }
+      });
+
+      const fullSet = new Set(fullRows);
+      const newBoard = [];
+      const rowMoves = [];
+
+      for (let y = 0; y < ROWS; y++) {
+        if (!fullSet.has(y)) {
+          const targetRowIdx = newBoard.length;
+          const rowsDropped = y - targetRowIdx;
+          if (rowsDropped > 0) {
+            for (let x = 0; x < COLS; x++) {
+              const cell = board[y][x];
+              if (cell && cell.mesh) {
+                rowMoves.push({
+                  mesh: cell.mesh,
+                  fromY: boardToWorld(x, y).y,
+                  toY: boardToWorld(x, targetRowIdx).y,
+                  rowsDropped,
+                  bx: x
+                });
+              }
+            }
+          }
+          newBoard.push(board[y]);
+        }
+      }
+      while (newBoard.length < ROWS) {
+        newBoard.push(Array(COLS).fill(null));
+      }
+      board = newBoard;
+
+      setTimeout(() => {
+        if (isGameOver) {
+          isAnimatingRows = false;
+          return;
+        }
+        if (rowMoves.length === 0) {
+          isAnimatingRows = false;
+          spawnPiece();
+          return;
+        }
+
+        rowMoves.forEach(move => {
+          const fallDuration = Math.min(0.36, 0.16 + Math.sqrt(move.rowsDropped) * 0.075);
+          fallingRowAnimations.push({
+            mesh: move.mesh,
+            fromY: move.fromY,
+            toY: move.toY,
+            bx: move.bx,
+            elapsed: 0,
+            fallDuration,
+            bounceDuration: 0.14,
+            landed: false
+          });
+        });
+      }, clearDuration * 1000);
+
+      return true;
+    }
+
+    function updateHUD() {
+      const sEl = document.getElementById('ui-score');
+      const lEl = document.getElementById('ui-level');
+      const lnEl = document.getElementById('ui-lines');
+      if (sEl) sEl.textContent = score.toLocaleString();
+      if (lEl) lEl.textContent = level;
+      if (lnEl) lnEl.textContent = lines;
+    }
+
+    function getDropIntervalMs() {
+      return Math.max(95, 850 * Math.pow(0.86, level - 1));
+    }
+
+    function resetGame() {
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (board[y][x] && board[y][x].mesh) {
+            playfieldBlocksGroup.remove(board[y][x].mesh);
+          }
+          board[y][x] = null;
+        }
+      }
+
+      bag = [];
+      holdType = null;
+      canHold = true;
+      nextType = nextFromBag();
+      score = 0;
+      lines = 0;
+      level = 1;
+      dropAccumulator = 0;
+      isGameOver = false;
+      isPaused = false;
+      isPlaying = true;
+      isAnimatingRows = false;
+      clearingAnimations.length = 0;
+      fallingRowAnimations.length = 0;
+
+      updateHUD();
+      const overlay = document.getElementById('modal-overlay');
+      if (overlay) overlay.classList.add('hidden');
+      const iconPause = document.getElementById('icon-pause');
+      const labelPause = document.getElementById('label-pause');
+      if (iconPause) iconPause.textContent = '⏸️';
+      if (labelPause) labelPause.textContent = '暫停';
+
+      soundFX.init();
+      soundFX.setLevelTempo(level);
+      soundFX.resetBgmPosition();
+      soundFX.startBgm();
+      spawnPiece();
+    }
+
+    function triggerGameOver() {
+      isGameOver = true;
+      isPlaying = false;
+      soundFX.stopBgm();
+      soundFX.playGameOver();
+
+      while (ghostPieceGroup.children.length > 0) {
+        ghostPieceGroup.remove(ghostPieceGroup.children[0]);
+      }
+
+      const overlay = document.getElementById('modal-overlay');
+      if (overlay) {
+        document.getElementById('modal-title').textContent = '倉庫堆滿啦！GAME OVER';
+        document.getElementById('modal-subtitle').textContent = '紙箱已堆疊至天花板！您可以重新挑戰，或將目前的 3D 紙箱堆疊作品匯出成 .glb 模型。';
+        document.getElementById('modal-stats').classList.remove('hidden');
+        document.getElementById('final-score').textContent = score.toLocaleString();
+        document.getElementById('final-level').textContent = level;
+        document.getElementById('final-lines').textContent = lines;
+        document.getElementById('btn-modal-primary').textContent = '🔄 再玩一局';
+        document.getElementById('btn-modal-export').classList.remove('hidden');
+        overlay.classList.remove('hidden');
+      }
+    }
+
+    function togglePause() {
+      if (!isPlaying || isGameOver) return;
+      isPaused = !isPaused;
+      const overlay = document.getElementById('modal-overlay');
+      if (isPaused) {
+        soundFX.stopBgm();
+        document.getElementById('icon-pause').textContent = '▶️';
+        document.getElementById('label-pause').textContent = '繼續';
+        document.getElementById('modal-title').textContent = '遊戲暫停 PAUSED';
+        document.getElementById('modal-subtitle').textContent = '倉庫休息時間！您可以自由拖曳旋轉檢視 3D 紙箱細節，或隨時匯出當前 3D 模型。';
+        document.getElementById('modal-stats').classList.add('hidden');
+        document.getElementById('btn-modal-primary').textContent = '▶️ 繼續遊戲';
+        document.getElementById('btn-modal-export').classList.remove('hidden');
+        if (overlay) overlay.classList.remove('hidden');
+      } else {
+        soundFX.startBgm();
+        document.getElementById('icon-pause').textContent = '⏸️';
+        document.getElementById('label-pause').textContent = '暫停';
+        if (overlay) overlay.classList.add('hidden');
+        lastTimestamp = performance.now();
+      }
+    }
+
+    // --- 8. TOAST MESSAGE & GLTF (.GLB) 3D MODEL EXPORT ---
+    function showToast(msg) {
+      const toastContainer = document.getElementById('toast-container');
+      if (!toastContainer) return;
+      const div = document.createElement('div');
+      div.className = 'toast-anim glass-panel px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold text-amber-200 border-amber-400/50 shadow-xl';
+      div.textContent = msg;
+      toastContainer.appendChild(div);
+      setTimeout(() => div.remove(), 2700);
+    }
+
+    function exportCardboardGLB() {
+      if (typeof THREE.GLTFExporter === 'undefined') {
+        showToast('⚠️ GLTFExporter 尚未載入完成，請稍候再試');
+        return;
+      }
+
+      let exportTarget = playfieldBlocksGroup;
+      let tempShowcase = null;
+
+      if (playfieldBlocksGroup.children.length <= 1 && activePieceGroup.children.length === 0) {
+        tempShowcase = new THREE.Group();
+        tempShowcase.name = 'CardboardTetrisShowcase';
+        const layout = [
+          { type: 'I', pos: [-3.5, 0, 2.5], rot: 0 },
+          { type: 'O', pos: [-0.5, 0, 1.5], rot: 0 },
+          { type: 'T', pos: [2.5, 0, 2.2], rot: 0 },
+          { type: 'Z', pos: [-2.2, 0, -1.2], rot: 0 },
+          { type: 'S', pos: [-4.8, 0, -0.5], rot: 0 },
+          { type: 'L', pos: [1.8, 0, -1.5], rot: 0 },
+          { type: 'J', pos: [4.5, 0, -0.8], rot: 0 }
+        ];
+        layout.forEach(item => {
+          const g = new THREE.Group();
+          TETROMINOES[item.type].shapes[0].forEach(([dx, dy]) => {
+            const c = createCardboardCubeMesh(item.type, false);
+            c.position.set(dx, 2 - dy, 0);
+            g.add(c);
+          });
+          g.position.set(...item.pos);
+          tempShowcase.add(g);
+        });
+        exportTarget = tempShowcase;
+      }
+
+      showToast('📦 正在封裝 3D 瓦楞紙箱模型 (.glb)...');
+
+      const exporter = new THREE.GLTFExporter();
+      exporter.parse(
+        exportTarget,
+        function (result) {
+          const blob = new Blob([result], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.style.display = 'none';
+          link.href = url;
+          link.download = `白六紙箱俄羅斯方塊_${Date.now()}.glb`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          showToast('✅ 已成功匯出 3D 紙箱模型 (.glb)！');
+        },
+        function (error) {
+          console.error('GLB Export Error:', error);
+          showToast('❌ 匯出發生錯誤，請重試');
+        },
+        { binary: true }
+      );
+    }
+
+    // --- 9. INPUT HANDLING (KEYBOARD, D-PAD & ARCADE BUTTONS) ---
+    function safeBind(id, eventName, handler) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener(eventName, handler);
+      return el;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) {
+        e.preventDefault();
+      }
+      if (e.code === 'KeyP') {
+        togglePause();
+        return;
+      }
+      if (e.code === 'KeyR') {
+        resetCamera();
+        return;
+      }
+      if (!isPlaying || isPaused || isGameOver || isAnimatingRows) return;
+
+      switch (e.code) {
+        case 'ArrowLeft':
+        case 'KeyA':
+          movePiece(-1, 0);
+          break;
+        case 'ArrowRight':
+        case 'KeyD':
+          movePiece(1, 0);
+          break;
+        case 'ArrowDown':
+        case 'KeyS':
+          if (movePiece(0, -1)) {
+            score += 1;
+            updateHUD();
+            dropAccumulator = 0;
+          }
+          break;
+        case 'ArrowUp':
+        case 'KeyW':
+        case 'KeyX':
+          rotatePiece();
+          break;
+        case 'Space':
+          hardDrop();
+          break;
+        case 'KeyC':
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          holdCurrentPiece();
+          break;
+      }
+    });
+
+    function bindRepeatableButton(btnId, actionFn, initialDelay = 170, repeatRate = 55) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      let timeoutId = null;
+      let intervalId = null;
+
+      const start = (e) => {
+        e.preventDefault();
+        btn.classList.add('pressed');
+        actionFn();
+        clearTimeout(timeoutId);
+        clearInterval(intervalId);
+        timeoutId = setTimeout(() => {
+          intervalId = setInterval(actionFn, repeatRate);
+        }, initialDelay);
+      };
+
+      const stop = () => {
+        btn.classList.remove('pressed');
+        clearTimeout(timeoutId);
+        clearInterval(intervalId);
+      };
+
+      btn.addEventListener('pointerdown', start);
+      btn.addEventListener('pointerup', stop);
+      btn.addEventListener('pointerleave', stop);
+      btn.addEventListener('pointercancel', stop);
+    }
+
+    // Bind Classic Arcade Controls
+    bindRepeatableButton('ctrl-left', () => movePiece(-1, 0));
+    bindRepeatableButton('ctrl-right', () => movePiece(1, 0));
+    bindRepeatableButton('ctrl-down', () => {
+      if (movePiece(0, -1)) {
+        score += 1;
+        updateHUD();
+        dropAccumulator = 0;
+      }
+    }, 130, 45);
+
+    safeBind('ctrl-rotate', 'pointerdown', (e) => {
+      e.preventDefault();
+      rotatePiece();
+    });
+    safeBind('ctrl-drop', 'pointerdown', (e) => {
+      e.preventDefault();
+      hardDrop();
+    });
+    safeBind('ctrl-hold', 'pointerdown', (e) => {
+      e.preventDefault();
+      holdCurrentPiece();
+    });
+    safeBind('hold-box-ui', 'click', () => holdCurrentPiece());
+
+    // Bind Semi-Transparent Floating D-Pad & Clockwise Rotate Overlay Controls
+    bindRepeatableButton('dpad-left', () => movePiece(-1, 0));
+    bindRepeatableButton('dpad-right', () => movePiece(1, 0));
+    bindRepeatableButton('dpad-down', () => {
+      if (movePiece(0, -1)) {
+        score += 1;
+        updateHUD();
+        dropAccumulator = 0;
+      }
+    }, 130, 45);
+
+    const dpadUp = safeBind('dpad-up', 'pointerdown', (e) => {
+      e.preventDefault();
+      if (dpadUp) dpadUp.classList.add('pressed');
+      hardDrop();
+    });
+    if (dpadUp) {
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+        dpadUp.addEventListener(evt, () => dpadUp.classList.remove('pressed'));
+      });
+    }
+
+    const dpadRotate = safeBind('dpad-rotate', 'pointerdown', (e) => {
+      e.preventDefault();
+      if (dpadRotate) dpadRotate.classList.add('pressed');
+      rotatePiece();
+    });
+    if (dpadRotate) {
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(evt => {
+        dpadRotate.addEventListener(evt, () => dpadRotate.classList.remove('pressed'));
+      });
+    }
+
+    safeBind('dpad-hold', 'pointerdown', (e) => {
+      e.preventDefault();
+      holdCurrentPiece();
+    });
+
+    // Control Panel Layout Mode Toggle ('translucent' vs 'classic')
+    let controlPanelMode = 'translucent';
+    function applyControlPanelMode() {
+      const classicBar = document.getElementById('arcade-controls');
+      const translucentOverlay = document.getElementById('translucent-controls');
+      const badge = document.getElementById('control-mode-badge');
+      if (!classicBar || !translucentOverlay || !badge) return;
+
+      if (controlPanelMode === 'translucent') {
+        classicBar.classList.add('hidden');
+        translucentOverlay.classList.remove('hidden');
+        badge.textContent = '半透明方向鍵';
+        badge.className = 'px-1.5 py-0.5 rounded bg-amber-600/35 text-amber-200 text-[10px]';
+      } else {
+        translucentOverlay.classList.add('hidden');
+        classicBar.classList.remove('hidden');
+        badge.textContent = '經典底部按鍵';
+        badge.className = 'px-1.5 py-0.5 rounded bg-sky-600/35 text-sky-200 text-[10px]';
+      }
+    }
+
+    safeBind('btn-control-mode', 'click', () => {
+      controlPanelMode = controlPanelMode === 'translucent' ? 'classic' : 'translucent';
+      applyControlPanelMode();
+      showToast(
+        controlPanelMode === 'translucent'
+          ? '🎮 已切換為「半透明十字方向鍵面板」'
+          : '🕹️ 已切換為「經典底部按鍵面板」'
+      );
+    });
+
+    // Header & Modal UI Buttons
+    safeBind('btn-modal-primary', 'click', () => {
+      if (isPaused && !isGameOver) {
+        togglePause();
+      } else {
+        resetGame();
+      }
+    });
+    safeBind('btn-modal-export', 'click', exportCardboardGLB);
+    safeBind('btn-export-glb', 'click', exportCardboardGLB);
+    safeBind('btn-restart-top', 'click', resetGame);
+    safeBind('btn-pause', 'click', togglePause);
+
+    function syncAudioUI() {
+      const sfxMuted = soundFX.sfxMuted;
+      const bgmMuted = soundFX.bgmMuted;
+
+      const iconSound = document.getElementById('icon-sound');
+      const labelSound = document.getElementById('label-sound');
+      const sfxBadge = document.getElementById('sfx-mode-badge');
+      if (iconSound) iconSound.textContent = sfxMuted ? '🔇' : '🔊';
+      if (labelSound) labelSound.textContent = sfxMuted ? '靜音' : '音效';
+      if (sfxBadge) {
+        sfxBadge.textContent = sfxMuted ? '關閉' : '開啟';
+        sfxBadge.className = sfxMuted
+          ? 'px-1.5 py-0.5 rounded bg-stone-600/40 text-stone-300 text-[10px]'
+          : 'px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]';
+      }
+
+      const iconBgm = document.getElementById('icon-bgm');
+      const labelBgm = document.getElementById('label-bgm');
+      const bgmBadge = document.getElementById('bgm-mode-badge');
+      if (iconBgm) iconBgm.textContent = bgmMuted ? '🔕' : '🎵';
+      if (labelBgm) labelBgm.textContent = bgmMuted ? '無樂' : '音樂';
+      if (bgmBadge) {
+        bgmBadge.textContent = bgmMuted ? '關閉' : '開啟';
+        bgmBadge.className = bgmMuted
+          ? 'px-1.5 py-0.5 rounded bg-stone-600/40 text-stone-300 text-[10px]'
+          : 'px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]';
+      }
+    }
+
+    function handleToggleSfx() {
+      const muted = soundFX.toggleSfx();
+      syncAudioUI();
+      showToast(muted ? '🔇 已關閉紙箱碰撞音效' : '🔊 已開啟紙箱碰撞音效');
+    }
+
+    function handleToggleBgm() {
+      const muted = soundFX.toggleBgm();
+      syncAudioUI();
+      showToast(muted ? '🔕 已關閉背景音樂' : '🎵 已開啟經典俄羅斯方塊配樂');
+    }
+
+    safeBind('btn-mute', 'click', handleToggleSfx);
+    safeBind('btn-sfx-drawer', 'click', handleToggleSfx);
+    safeBind('btn-bgm', 'click', handleToggleBgm);
+    safeBind('btn-bgm-drawer', 'click', handleToggleBgm);
+
+    // Collapsible Floating Tools Drawer
+    const toolsDrawer = document.getElementById('tools-drawer');
+    let drawerOpen = window.innerWidth >= 640;
+    if (toolsDrawer && !drawerOpen) toolsDrawer.classList.add('hidden');
+
+    safeBind('btn-toggle-panel', 'click', () => {
+      if (!toolsDrawer) return;
+      drawerOpen = !drawerOpen;
+      toolsDrawer.classList.toggle('hidden', !drawerOpen);
+    });
+
+    // Camera Orbit Toggle & Reset
+    function resetCamera() {
+      camera.position.copy(DEFAULT_CAM_POS);
+      controls.target.copy(DEFAULT_CAM_TARGET);
+      controls.update();
+      showToast('🎯 已重置標準 3D 倉庫視角');
+    }
+
+    safeBind('btn-reset-cam', 'click', resetCamera);
+    safeBind('btn-camera-toggle', 'click', () => {
+      controls.enabled = !controls.enabled;
+      const badge = document.getElementById('camera-mode-badge');
+      if (!badge) return;
+      if (controls.enabled) {
+        badge.textContent = '開啟';
+        badge.className = 'px-1.5 py-0.5 rounded bg-emerald-600/30 text-emerald-300 text-[10px]';
+      } else {
+        badge.textContent = '鎖定';
+        badge.className = 'px-1.5 py-0.5 rounded bg-stone-600/40 text-stone-300 text-[10px]';
+      }
+    });
+
+    // --- 10. RESPONSIVE RESIZE & MAIN ANIMATION LOOP ---
+    function handleResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      if (camera.aspect < 0.75) {
+        DEFAULT_CAM_POS.set(0, 11.3, 35.5);
+      } else {
+        DEFAULT_CAM_POS.set(0, 12.0, 29.5);
+      }
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    function animate(timestamp) {
+      requestAnimationFrame(animate);
+
+      const dt = Math.min(0.1, (timestamp - (lastTimestamp || timestamp)) / 1000);
+      lastTimestamp = timestamp;
+
+      if (isPlaying && !isPaused && !isGameOver && !isAnimatingRows && currentPiece) {
+        dropAccumulator += dt * 1000;
+        if (dropAccumulator >= getDropIntervalMs()) {
+          dropAccumulator = 0;
+          if (!movePiece(0, -1)) {
+            soundFX.playDrop(false);
+            lockPiece();
+          }
+        }
+      }
+
+      // Phase 1: Line Clear Flash, Shake, Z-Pop & Shrink Animation
+      for (let i = clearingAnimations.length - 1; i >= 0; i--) {
+        const item = clearingAnimations[i];
+        item.elapsed += dt;
+        const activeTime = item.elapsed - item.delay;
+
+        if (activeTime <= 0) {
+          continue;
+        }
+
+        const t = Math.min(1, activeTime / Math.max(0.12, item.duration));
+
+        if (!item.spawnedBurst && t >= 0.25) {
+          item.spawnedBurst = true;
+          spawnImpactParticles(
+            [{ x: item.baseX, y: item.baseY, z: item.baseZ }],
+            item.colorHex,
+            5,
+            true
+          );
+        }
+
+        if (t >= 1) {
+          playfieldBlocksGroup.remove(item.mesh);
+          clearingAnimations.splice(i, 1);
+        } else {
+          const flashStrength = Math.sin(t * Math.PI) * 1.15;
+          if (Array.isArray(item.mesh.material)) {
+            item.mesh.material.forEach(m => {
+              m.emissive.setHex(0xffe49e);
+              m.emissiveIntensity = flashStrength;
+            });
+          }
+
+          const shakeX = Math.sin(t * 42) * 0.08 * (1 - t);
+          const popZ = Math.sin(t * Math.PI) * 0.35;
+          item.mesh.position.set(item.baseX + shakeX, item.baseY, item.baseZ + popZ);
+
+          if (t < 0.3) {
+            const swell = 1 + (t / 0.3) * 0.16;
+            item.mesh.scale.set(swell, swell * 0.92, swell);
+          } else {
+            const shrinkT = (t - 0.3) / 0.7;
+            const s = Math.max(0.01, 1.16 * (1 - shrinkT * shrinkT));
+            item.mesh.scale.set(s, s * (1 - shrinkT * 0.4), s);
+          }
+          item.mesh.rotation.z = Math.sin(t * 18) * 0.14;
+        }
+      }
+
+      // Phase 2: Upper Rows Gravity Fall & Cardboard Landing Squash/Bounce
+      if (fallingRowAnimations.length > 0) {
+        let allFinished = true;
+        let anyJustLanded = false;
+
+        for (let i = fallingRowAnimations.length - 1; i >= 0; i--) {
+          const anim = fallingRowAnimations[i];
+          anim.elapsed += dt;
+          const totalDur = anim.fallDuration + anim.bounceDuration;
+
+          if (anim.elapsed < anim.fallDuration) {
+            allFinished = false;
+            const ft = anim.elapsed / anim.fallDuration;
+            const easeIn = ft * ft;
+            anim.mesh.position.y = anim.fromY + (anim.toY - anim.fromY) * easeIn;
+            const stretchY = 1 + easeIn * 0.06;
+            const squashXZ = 1 - easeIn * 0.03;
+            anim.mesh.scale.set(squashXZ, stretchY, squashXZ);
+          } else if (anim.elapsed < totalDur) {
+            allFinished = false;
+            if (!anim.landed) {
+              anim.landed = true;
+              anyJustLanded = true;
+              spawnImpactParticles(
+                [{ x: anim.mesh.position.x, y: anim.toY, z: 0 }],
+                null,
+                2,
+                false
+              );
+            }
+            const bt = (anim.elapsed - anim.fallDuration) / anim.bounceDuration;
+            const dampedWave = Math.sin(bt * Math.PI) * (1 - bt);
+            anim.mesh.position.y = anim.toY + dampedWave * 0.12;
+            const squashY = 1 - dampedWave * 0.14;
+            const bulgeXZ = 1 + dampedWave * 0.07;
+            anim.mesh.scale.set(bulgeXZ, squashY, bulgeXZ);
+          } else {
+            anim.mesh.position.y = anim.toY;
+            anim.mesh.scale.set(1, 1, 1);
+            fallingRowAnimations.splice(i, 1);
+          }
+        }
+
+        if (anyJustLanded) {
+          soundFX.playDrop(false);
+          cameraShakeIntensity = Math.max(cameraShakeIntensity, 0.09);
+        }
+
+        if (allFinished && fallingRowAnimations.length === 0 && isAnimatingRows) {
+          isAnimatingRows = false;
+          spawnPiece();
+        }
+      }
+
+      // Impact Cardboard Dust Particles
+      for (let i = dustParticles.length - 1; i >= 0; i--) {
+        const p = dustParticles[i];
+        p.life -= dt * 2.2;
+        if (p.life <= 0) {
+          particlesGroup.remove(p.mesh);
+          dustParticles.splice(i, 1);
+        } else {
+          p.vy -= 9.8 * dt;
+          p.mesh.position.x += p.vx * dt;
+          p.mesh.position.y += p.vy * dt;
+          p.mesh.position.z += p.vz * dt;
+          p.mesh.material.opacity = p.life * 0.8;
+          p.mesh.scale.setScalar(p.life);
+        }
+      }
+
+      // Subtle Camera Shake on Hard Drop
+      if (cameraShakeIntensity > 0.002) {
+        camera.position.x += (Math.random() - 0.5) * cameraShakeIntensity;
+        camera.position.y += (Math.random() - 0.5) * cameraShakeIntensity;
+        cameraShakeIntensity *= 0.84;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+      applyControlPanelMode();
+      drawMiniPiece('canvas-next', 'T');
+      animate(0);
+    };
+  </script>
+</body>
+</html>
